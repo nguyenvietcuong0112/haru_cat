@@ -7,12 +7,14 @@ class CatBlockWidget extends StatefulWidget {
   final CatBlock block;
   final double cellSize;
   final GameController controller;
+  final bool isPreview;
 
   const CatBlockWidget({
     super.key,
     required this.block,
     required this.cellSize,
     required this.controller,
+    this.isPreview = false,
   });
 
   @override
@@ -32,25 +34,32 @@ class _CatBlockWidgetState extends State<CatBlockWidget> {
 
     // In our model: row 0 is bottom row, row 9 is top row
     // In UI Positioned: top = (9 - row) * cellSize
+    // Preview row is at row -1, which maps to top = (9 - (-1)) * cellSize = 10 * cellSize
     final targetLeft = block.col * cellSize;
     final targetTop = (GameConstants.boardRows - 1 - block.row) * cellSize;
 
     final currentLeft = _isDragging ? (targetLeft + _dragOffset) : targetLeft;
 
     return AnimatedPositioned(
-      duration: _isDragging ? Duration.zero : const Duration(milliseconds: 160),
-      curve: Curves.easeOutQuad,
+      duration: _isDragging
+          ? Duration.zero
+          : (block.isFalling
+              ? const Duration(milliseconds: 280)
+              : const Duration(milliseconds: 200)),
+      curve: block.isFalling ? Curves.easeOutCubic : Curves.easeOutQuad,
       left: currentLeft,
       top: targetTop,
       width: blockWidthPx,
       height: blockHeightPx,
       child: GestureDetector(
         onTap: () {
+          if (widget.isPreview || block.row < 0) return;
           if (widget.controller.activeBooster != null) {
             widget.controller.applyBoosterToBlock(block);
           }
         },
         onHorizontalDragStart: (details) {
+          if (widget.isPreview || block.row < 0) return;
           if (widget.controller.isBusy || widget.controller.activeBooster != null) return;
           if (block.type == BlockType.sealed) {
             widget.controller.setMascotQuote('Chú mèo này đang bị xích, không thể trượt meow!');
@@ -88,11 +97,15 @@ class _CatBlockWidgetState extends State<CatBlockWidget> {
           widget.controller.slideBlock(block, targetCol);
         },
         child: AnimatedScale(
-          scale: block.isClearing ? 1.15 : 1.0,
-          duration: const Duration(milliseconds: 160),
+          scale: block.isClearing ? 1.12 : 1.0,
+          duration: const Duration(milliseconds: 260),
+          curve: Curves.easeOutBack,
           child: AnimatedOpacity(
-            opacity: block.isClearing ? 0.0 : 1.0,
-            duration: const Duration(milliseconds: 160),
+            opacity: block.isClearing
+                ? 0.0
+                : (widget.isPreview || block.row < 0 ? 0.78 : 1.0),
+            duration: const Duration(milliseconds: 260),
+            curve: Curves.easeInOut,
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 100),
               margin: EdgeInsets.all(_isDragging ? 1.0 : 2.5),
@@ -109,118 +122,155 @@ class _CatBlockWidgetState extends State<CatBlockWidget> {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  // 1. Base Cat Artwork with true aspect-ratio preservation
+                  // 1. Base Fish / Cat Artwork (tries new fish sprite first, falls back to legacy cat sprite)
                   ClipRRect(
                     borderRadius: BorderRadius.circular(14),
                     child: Image.asset(
-                      block.spriteAsset,
+                      block.fishSpriteAsset,
                       fit: BoxFit.fill,
                       errorBuilder: (ctx, err, stack) {
-                        return Container(
-                          decoration: BoxDecoration(
-                            color: Colors.orangeAccent,
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          alignment: Alignment.center,
-                          child: Text(
-                            '🐱 ${block.width}',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+                        return Image.asset(
+                          block.spriteAsset,
+                          fit: BoxFit.fill,
+                          errorBuilder: (_, __, ___) {
+                            return Container(
+                              decoration: BoxDecoration(
+                                color: Colors.orangeAccent,
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                '🐟 ${block.width}',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            );
+                          },
                         );
                       },
                     ),
                   ),
 
-                  // 2. Bomb Countdown Badge
-                  if (block.type == BlockType.bomb)
-                    Positioned(
-                      top: 4,
-                      right: 6,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: block.bombCountdown <= 2
-                              ? Colors.redAccent
-                              : const Color(0xFF222222),
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: Colors.yellowAccent,
-                            width: 1.5,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: block.bombCountdown <= 2
-                                  ? Colors.red.withValues(alpha: 0.6)
-                                  : Colors.black38,
-                              blurRadius: 4,
-                            ),
-                          ],
-                        ),
-                        child: Text(
-                          '${block.bombCountdown}',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                      ),
-                    ),
-
-                  // 3. Ice Crack Overlay (When health is reduced to 1)
-                  if (block.type == BlockType.ice && block.health <= 1)
+                  // 2. Ice Block Overlay (Translucent ice capsule)
+                  if (block.type == BlockType.ice)
                     Positioned.fill(
                       child: IgnorePointer(
-                        child: Container(
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(14),
-                            color: Colors.white.withValues(alpha: 0.25),
-                            border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.7),
-                              width: 1.5,
-                            ),
-                          ),
-                          child: CustomPaint(
-                            painter: _IceCrackPainter(),
-                          ),
-                        ),
-                      ),
-                    ),
-
-                  // 4. Sealed / Chained Block Overlay
-                  if (block.type == BlockType.sealed)
-                    Positioned.fill(
-                      child: IgnorePointer(
-                        child: Container(
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(14),
-                            color: Colors.black.withValues(alpha: 0.28),
-                            border: Border.all(
-                              color: const Color(0xFFB0BEC5),
-                              width: 2.2,
-                            ),
-                          ),
-                          child: Center(
-                            child: Container(
-                              padding: const EdgeInsets.all(4),
+                        child: Image.asset(
+                          'assets/images/sprites/fish/ice_${block.width}cell.png',
+                          fit: BoxFit.fill,
+                          errorBuilder: (_, __, ___) {
+                            return Container(
                               decoration: BoxDecoration(
-                                color: const Color(0xFF263238).withValues(alpha: 0.85),
-                                shape: BoxShape.circle,
+                                borderRadius: BorderRadius.circular(14),
+                                color: Colors.cyan.withValues(alpha: 0.25),
                                 border: Border.all(
-                                  color: const Color(0xFFFFD54F),
+                                  color: Colors.white.withValues(alpha: 0.7),
                                   width: 1.5,
                                 ),
                               ),
-                              child: const Icon(
-                                Icons.lock,
-                                color: Color(0xFFFFD54F),
-                                size: 16,
+                              child: block.health <= 1
+                                  ? CustomPaint(painter: _IceCrackPainter())
+                                  : null,
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+
+                  // 3. Sealed / Seaweed Overlay (Seaweed wrapped around block)
+                  if (block.type == BlockType.sealed)
+                    Positioned.fill(
+                      child: IgnorePointer(
+                        child: Image.asset(
+                          'assets/images/sprites/fish/seaweed_${block.width}cell.png',
+                          fit: BoxFit.fill,
+                          errorBuilder: (_, __, ___) {
+                            return Container(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(14),
+                                color: Colors.black.withValues(alpha: 0.28),
+                                border: Border.all(
+                                  color: const Color(0xFFB0BEC5),
+                                  width: 2.2,
+                                ),
                               ),
+                              child: Center(
+                                child: Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF263238).withValues(alpha: 0.85),
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: const Color(0xFFFFD54F),
+                                      width: 1.5,
+                                    ),
+                                  ),
+                                  child: const Icon(
+                                    Icons.lock,
+                                    color: Color(0xFFFFD54F),
+                                    size: 16,
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+
+                  // 4. Bomb Countdown (Centered inside bomb fish circle)
+                  if (block.type == BlockType.bomb)
+                    Center(
+                      child: Container(
+                        width: 24,
+                        height: 24,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.black45, width: 1.5),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Colors.black26,
+                              blurRadius: 3,
+                              offset: Offset(0, 1),
                             ),
+                          ],
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          '${block.bombCountdown}',
+                          style: TextStyle(
+                            fontFamily: 'JandaManatee',
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: block.bombCountdown <= 2
+                                ? Colors.red.shade800
+                                : Colors.black87,
                           ),
+                        ),
+                      ),
+                    ),
+
+                  // 5. Submerged Tint for preview row blocks
+                  if (widget.isPreview || block.row < 0)
+                    Positioned.fill(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(14),
+                          color: const Color(0xFF00363A).withValues(alpha: 0.22),
+                        ),
+                      ),
+                    ),
+
+                  // 6. Clear Burst Flash Overlay when row is being cleared
+                  if (block.isClearing)
+                    Positioned.fill(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(14),
+                          color: Colors.white.withValues(alpha: 0.65),
                         ),
                       ),
                     ),

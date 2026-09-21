@@ -35,6 +35,14 @@ class GameController extends ChangeNotifier {
   int get inGameLevel => _inGameLevel;
   int get scoreMultiplier => _inGameLevel;
 
+  double get silverMultiplier {
+    if (_inGameLevel <= 2) return 1.0;
+    if (_inGameLevel == 3) return 1.2;
+    if (_inGameLevel == 4) return 1.3;
+    if (_inGameLevel == 5) return 1.4;
+    return 1.5;
+  }
+
   // Character skill meter (0.0 to 1.0)
   double _skillCharge = 0.0;
   double get skillCharge => _skillCharge;
@@ -75,6 +83,9 @@ class GameController extends ChangeNotifier {
   String? _activeBooster;
   String? get activeBooster => _activeBooster;
 
+  int? _clearingRowIndex; // Currently clearing row index for animated beam effect
+  int? get clearingRowIndex => _clearingRowIndex;
+
   int _frozenTurns = 0; // If magician froze upcoming blocks
 
   final AudioManager _audio = AudioManager();
@@ -106,6 +117,7 @@ class GameController extends ChangeNotifier {
     _blocks.clear();
     _nextRowBlocks.clear();
     _activeBooster = null;
+    _clearingRowIndex = null;
     _frozenTurns = 0;
     _mascotQuote = 'Meow! Let\'s slide and clear blocks!';
 
@@ -196,16 +208,20 @@ class GameController extends ChangeNotifier {
         type = BlockType.sealed;
       }
 
+      // Gift box is strictly 1-cell
+      final blockWidth = type == BlockType.gift ? 1 : w;
+
       result.add(CatBlock(
         id: 'blk_${DateTime.now().microsecondsSinceEpoch}_${_random.nextInt(10000)}',
         col: col,
         row: r,
-        width: w,
+        width: blockWidth,
         type: type,
+        variant: _random.nextInt(2),
       ));
 
-      col += w;
-      currentTotal += w;
+      col += blockWidth;
+      currentTotal += blockWidth;
     }
     return result;
   }
@@ -309,7 +325,8 @@ class GameController extends ChangeNotifier {
 
     notifyListeners();
 
-    await Future.delayed(const Duration(milliseconds: 160));
+    // Allow user to clearly see block slide smoothly into target position before gravity or line evaluation
+    await Future.delayed(const Duration(milliseconds: 220));
 
     // Run gravity & match loop
     await _resolvePhysicsAndLines();
@@ -357,27 +374,30 @@ class GameController extends ChangeNotifier {
         _linesClearedTotal += linesCleared;
         if (_combo > _maxCombo) _maxCombo = _combo;
 
-        // Score with combo & level multiplier
-        int points = linesCleared * 100 * _combo * _scoreMultiplier;
+        // Score formula per GDD: Cleared Cells x Combo (Level Multiplier is omitted per design)
+        final clearedCells = linesCleared * GameConstants.boardCols;
+        final points = clearedCells * _combo;
         _score += points;
 
-        // Earn 2 silver fish per line cleared
-        _silverEarned += (linesCleared * 2);
+        // Silver Fish: base 2 per line * silverMultiplier
+        final silverReward = (linesCleared * 2 * silverMultiplier).round();
+        _silverEarned += silverReward;
+        _playerData.addSilverFish(silverReward);
 
         // Charge skill meter
         _skillCharge = min(1.0, _skillCharge + (linesCleared * 0.2) + (_combo * 0.08));
 
-        // Update Level Progression
-        final newLevel = 1 + (_score ~/ 1200);
+        // Update Level Progression (every 8 lines cleared = 1 level)
+        final newLevel = 1 + (_linesClearedTotal ~/ 8);
         if (newLevel > _inGameLevel) {
           _inGameLevel = newLevel;
-          _mascotQuote = 'LEVEL UP! Score is now x$_inGameLevel points!';
+          _mascotQuote = 'CẤP ĐỘ MỚI! Cấp $_inGameLevel (Bạc x${silverMultiplier.toStringAsFixed(1)})!';
         } else if (_combo >= 3) {
-          _mascotQuote = 'UNBELIEVABLE! Combo x$_combo!';
+          _mascotQuote = 'TUYỆT VỜI! Combo x$_combo!';
         } else if (_combo == 2) {
-          _mascotQuote = 'Awesome! Double Combo!';
+          _mascotQuote = 'Combo Đôi!';
         } else {
-          _mascotQuote = 'Purr-fect line clear! Keep it up!';
+          _mascotQuote = 'Xóa hàng thành công! Cố lên!';
         }
 
         if (_score > _bestScore) {
@@ -407,11 +427,10 @@ class GameController extends ChangeNotifier {
     return anyClearedTotal;
   }
 
-  int get _scoreMultiplier => _inGameLevel;
-
   Future<bool> _applyGravity() async {
     bool fellAny = false;
     final sortedBlocks = List<CatBlock>.from(_blocks)..sort((a, b) => a.row.compareTo(b.row));
+    final fallingBlocks = <CatBlock>[];
 
     for (final block in sortedBlocks) {
       int targetRow = block.row;
@@ -432,6 +451,8 @@ class GameController extends ChangeNotifier {
 
       if (targetRow != block.row) {
         block.row = targetRow;
+        block.isFalling = true;
+        fallingBlocks.add(block);
         fellAny = true;
       }
     }
@@ -439,6 +460,13 @@ class GameController extends ChangeNotifier {
     if (fellAny) {
       _audio.playDrop();
       notifyListeners();
+      // Allow smooth aquatic falling animation curve (280ms) to complete
+      await Future.delayed(const Duration(milliseconds: 280));
+      for (final b in fallingBlocks) {
+        b.isFalling = false;
+      }
+      notifyListeners();
+      await Future.delayed(const Duration(milliseconds: 60));
     }
 
     return fellAny;
@@ -447,6 +475,7 @@ class GameController extends ChangeNotifier {
   Future<int> _checkAndClearLines() async {
     final fullRows = <int>[];
 
+    // Only complete horizontal rows (all 8 columns filled) are eligible for clearance
     for (int r = 0; r < GameConstants.boardRows; r++) {
       bool full = true;
       for (int c = 0; c < GameConstants.boardCols; c++) {
@@ -462,12 +491,20 @@ class GameController extends ChangeNotifier {
 
     if (fullRows.isEmpty) return 0;
 
-    _audio.playClear();
+    // Pause briefly so user clearly sees the fish filling the entire horizontal row(s) edge-to-edge
+    await Future.delayed(const Duration(milliseconds: 200));
 
-    final toRemove = <CatBlock>{};
-    final specialTriggers = <CatBlock>[];
+    // Clear full rows sequentially (bottom to top) with row-by-row delay and beam animation
+    fullRows.sort();
 
-    for (final r in fullRows) {
+    for (int i = 0; i < fullRows.length; i++) {
+      final r = fullRows[i];
+      _clearingRowIndex = r;
+      _audio.playClear();
+
+      final rowBlocksToRemove = <CatBlock>{};
+      final rowSpecialTriggers = <CatBlock>[];
+
       for (final b in _blocks) {
         if (b.row == r) {
           if (b.type == BlockType.sealed) {
@@ -479,51 +516,74 @@ class GameController extends ChangeNotifier {
             _audio.playIceBreak();
           } else {
             b.isClearing = true;
-            toRemove.add(b);
+            rowBlocksToRemove.add(b);
 
             if (b.type != BlockType.cat1 && b.type != BlockType.cat2 && b.type != BlockType.cat3) {
               _specialBlocksCleared++;
             }
 
             if (b.type == BlockType.gift) {
-              _silverEarned += 25; // 25 Silver fish from gift!
+              final roll = _random.nextInt(3);
+              if (roll == 0) {
+                final goldDrop = 1 + _random.nextInt(2); // 1 or 2 Gold
+                _playerData.addGoldFish(goldDrop);
+                _mascotQuote = 'Rương kho báu: +$goldDrop Vàng!';
+              } else if (roll == 1) {
+                final boosterTypes = ['hammer', 'wand', 'magnet'];
+                final chosen = boosterTypes[_random.nextInt(boosterTypes.length)];
+                _playerData.addBooster(chosen, 1);
+                final bName = chosen == 'hammer' ? 'Búa' : (chosen == 'wand' ? 'Đũa thần' : 'Nam châm');
+                _mascotQuote = 'Rương kho báu: +1 Đạo cụ $bName!';
+              } else {
+                const silverDrop = 25;
+                _silverEarned += silverDrop;
+                _playerData.addSilverFish(silverDrop);
+                _mascotQuote = 'Rương kho báu: +$silverDrop Bạc!';
+              }
               _audio.playBooster();
             } else if (b.type == BlockType.bomb || b.type == BlockType.lightning) {
-              specialTriggers.add(b);
+              rowSpecialTriggers.add(b);
             }
           }
         }
       }
-    }
 
-    notifyListeners();
-    await Future.delayed(const Duration(milliseconds: 180));
+      notifyListeners();
+      // Shimmer & scale-pop animation delay for current row
+      await Future.delayed(const Duration(milliseconds: 280));
 
-    // Special block chain reactions
-    for (final sb in specialTriggers) {
-      if (sb.type == BlockType.bomb) {
-        _audio.playClear();
-        for (final b in _blocks) {
-          if ((b.row - sb.row).abs() <= 1 &&
-              (b.col <= sb.col + sb.width && b.col + b.width >= sb.col)) {
-            toRemove.add(b);
+      // Handle special block chain reactions for this row
+      for (final sb in rowSpecialTriggers) {
+        if (sb.type == BlockType.bomb) {
+          _audio.playClear();
+          for (final b in _blocks) {
+            if ((b.row - sb.row).abs() <= 1 &&
+                (b.col <= sb.col + sb.width && b.col + b.width >= sb.col)) {
+              rowBlocksToRemove.add(b);
+            }
           }
-        }
-      } else if (sb.type == BlockType.lightning) {
-        _audio.playLightning();
-        // Cross zap: clears entire row and intersecting columns!
-        for (final b in _blocks) {
-          final isSameRow = b.row == sb.row;
-          final isSameCol = (b.col <= sb.col + sb.width - 1 && b.col + b.width > sb.col);
-          if (isSameRow || isSameCol) {
-            toRemove.add(b);
+        } else if (sb.type == BlockType.lightning) {
+          _audio.playLightning();
+          // Cross zap: clears entire row and intersecting columns
+          for (final b in _blocks) {
+            final isSameRow = b.row == sb.row;
+            final isSameCol = (b.col <= sb.col + sb.width - 1 && b.col + b.width > sb.col);
+            if (isSameRow || isSameCol) {
+              rowBlocksToRemove.add(b);
+            }
           }
         }
       }
-    }
 
-    _blocks.removeWhere((b) => toRemove.contains(b));
-    notifyListeners();
+      _blocks.removeWhere((b) => rowBlocksToRemove.contains(b));
+      _clearingRowIndex = null;
+      notifyListeners();
+
+      // If multiple full rows, pause before next row animation to let user see sequential cascade
+      if (i < fullRows.length - 1) {
+        await Future.delayed(const Duration(milliseconds: 140));
+      }
+    }
 
     return fullRows.length;
   }
@@ -549,20 +609,27 @@ class GameController extends ChangeNotifier {
     }
 
     // Move next row blocks into bottom row 0
-    if (_nextRowBlocks.isNotEmpty) {
-      for (final b in _nextRowBlocks) {
+    final pushedBlocks = List<CatBlock>.from(_nextRowBlocks);
+    _nextRowBlocks.clear();
+
+    if (pushedBlocks.isNotEmpty) {
+      for (final b in pushedBlocks) {
         b.row = 0;
         _blocks.add(b);
       }
     } else {
       _generateRow(0);
     }
-    _generateNextRow();
 
     _audio.playDrop();
     notifyListeners();
 
-    await Future.delayed(const Duration(milliseconds: 150));
+    // Allow 180ms for blocks to smoothly slide up before revealing next preview row
+    await Future.delayed(const Duration(milliseconds: 180));
+    _generateNextRow();
+    notifyListeners();
+
+    await Future.delayed(const Duration(milliseconds: 50));
   }
 
   void _handleCeilingHit() {
@@ -626,7 +693,7 @@ class GameController extends ChangeNotifier {
     _playerData.recordGameEnd(
       score: _score,
       linesCleared: _linesClearedTotal,
-      silverEarned: _silverEarned,
+      silverEarned: 0, // Silver fish credited in real-time during game
     );
   }
 
@@ -705,33 +772,43 @@ class GameController extends ChangeNotifier {
     if (_activeBooster == GameConstants.boosterHammer) {
       if (_playerData.useBooster('hammer')) {
         _activeBooster = null;
-        _audio.playBooster();
+        _audio.playIceBreak();
 
-        // 1. Hammer (Thunderball): Clears target block AND nearby cats (3x3 area)
-        final toRemove = <CatBlock>{block};
-        for (final b in _blocks) {
-          final rowDist = (b.row - block.row).abs();
-          final bStart = b.col;
-          final bEnd = b.col + b.width - 1;
-          final targetStart = block.col;
-          final targetEnd = block.col + block.width - 1;
-          if (rowDist <= 1 && bStart <= targetEnd + 1 && bEnd >= targetStart - 1) {
-            toRemove.add(b);
-          }
+        // 1. Hammer: Breaks ice in 1 single hit ("Phá băng, chỉ cần phá 1 lần")
+        if (block.type == BlockType.ice) {
+          _blocks.remove(block);
+          _mascotQuote = 'Búa ốc xà cừ đã phá tan tảng băng chỉ với 1 lần đập!';
+        } else if (block.type == BlockType.sealed) {
+          _blocks.remove(block);
+          _mascotQuote = 'Búa ốc xà cừ đã phá vỡ xiềng xích!';
+        } else {
+          _blocks.remove(block);
+          _mascotQuote = 'Búa ốc xà cừ đã đập vỡ khối cá!';
         }
 
-        _blocks.removeWhere((b) => toRemove.contains(b));
-        _mascotQuote = 'Búa sấm sét đã đập vỡ khối và các chú mèo xung quanh!';
         notifyListeners();
+        await Future.delayed(const Duration(milliseconds: 160));
+        await _applyGravity();
+        await _resolvePhysicsAndLines();
+      }
+    } else if (_activeBooster == GameConstants.boosterNet || _activeBooster == 'magnet') {
+      if (_playerData.useBooster('net')) {
+        _activeBooster = null;
+        _audio.playDrop();
 
+        // 3. Net: Scoop/collect target fish to clear space ("Thu thập dần các con cá để cho thông thoáng")
+        _blocks.remove(block);
+        _mascotQuote = 'Chiếc vợt đã thu thập chú cá, bàn cờ thông thoáng hơn rồi!';
+
+        notifyListeners();
         await Future.delayed(const Duration(milliseconds: 160));
         await _applyGravity();
         await _resolvePhysicsAndLines();
       }
     } else if (_activeBooster == GameConstants.boosterWand) {
-      // 3. Magic Wand (Purring): Splits big cat blocks into 1-cell kitty cats!
+      // 2. Wand targeted fallback: transforms selected block into 1-cell fish
       if (block.width < 2) {
-        _mascotQuote = 'Hãy chọn chú mèo lớn (2-4 ô) để chia nhỏ thành mèo con 1 ô meow!';
+        _mascotQuote = 'Hãy chọn con cá lớn (2-4 ô) để biến đổi thành cá nhỏ 1 ô meow!';
         notifyListeners();
         return;
       }
@@ -740,19 +817,19 @@ class GameController extends ChangeNotifier {
         _activeBooster = null;
         _audio.playLightning();
 
-        // Remove the big block and spawn width * 1-cell blocks
         _blocks.remove(block);
         for (int i = 0; i < block.width; i++) {
           _blocks.add(CatBlock(
-            id: 'split_${DateTime.now().microsecondsSinceEpoch}_${block.col + i}',
+            id: 'wand_${DateTime.now().microsecondsSinceEpoch}_${block.col + i}_${block.row}',
             col: block.col + i,
             row: block.row,
             width: 1,
             type: block.type,
+            variant: _random.nextInt(2),
           ));
         }
 
-        _mascotQuote = 'Đũa thần đã phân tách mèo lớn thành các chú mèo con!';
+        _mascotQuote = 'Đũa sao biển đã biến đổi cá lớn thành các chú cá nhỏ!';
         notifyListeners();
 
         await Future.delayed(const Duration(milliseconds: 160));
@@ -762,37 +839,47 @@ class GameController extends ChangeNotifier {
     }
   }
 
-  Future<void> useMagnet() async {
-    if (_playerData.getBoosterCount('magnet') <= 0 || _isBusy || _isGameOver || _isLevelCompleted) return;
+  /// 2. Wand: Transforms fish across the board to make space ("Dùng để biến đổi các con cá cho thông thoáng")
+  Future<void> useWand() async {
+    if (_playerData.getBoosterCount('wand') <= 0 || _isBusy || _isGameOver || _isLevelCompleted) return;
 
-    // 2. Magnet (Scratching): Randomly clear all cat blocks of the same color!
-    final catColors = <BlockType>{};
-    for (final b in _blocks) {
-      if (b.type == BlockType.cat1 || b.type == BlockType.cat2 || b.type == BlockType.cat3) {
-        catColors.add(b.type);
-      }
+    final largeBlocks = _blocks.where((b) => b.width >= 2).toList();
+    if (largeBlocks.isEmpty && _blocks.isEmpty) {
+      _mascotQuote = 'Hiện tại không có con cá lớn nào để biến đổi meow!';
+      notifyListeners();
+      return;
     }
 
-    if (catColors.isEmpty && _blocks.isEmpty) return;
-
-    if (_playerData.useBooster('magnet')) {
-      _audio.playBooster();
+    if (_playerData.useBooster('wand')) {
+      _audio.playLightning();
       _isBusy = true;
+      _activeBooster = null;
       notifyListeners();
 
-      final targetColor = catColors.isNotEmpty
-          ? (catColors.toList()..shuffle(_random)).first
-          : _blocks.first.type;
-
-      final removedCount = _blocks.where((b) => b.type == targetColor).length;
-      _blocks.removeWhere((b) => b.type == targetColor);
-
-      String colorName = 'mèo cam';
-      if (targetColor == BlockType.cat2) colorName = 'mèo trắng';
-      if (targetColor == BlockType.cat3) colorName = 'mèo nâu';
-
-      _mascotQuote = 'Nam châm đã hút sạch toàn bộ $colorName trên bàn cờ!';
-      _score += removedCount * 60 * _scoreMultiplier;
+      if (largeBlocks.isNotEmpty) {
+        // Transform all large fish into 1-cell fish
+        for (final b in largeBlocks) {
+          _blocks.remove(b);
+          for (int i = 0; i < b.width; i++) {
+            _blocks.add(CatBlock(
+              id: 'wand_${DateTime.now().microsecondsSinceEpoch}_${b.col + i}_${b.row}',
+              col: b.col + i,
+              row: b.row,
+              width: 1,
+              type: b.type,
+              variant: _random.nextInt(2),
+            ));
+          }
+        }
+        _mascotQuote = 'Đũa sao biển đã biến đổi toàn bộ cá lớn thành cá nhỏ cho thông thoáng!';
+      } else {
+        // All fish are 1-cell: shuffle them to clear rows
+        final cols = List.generate(GameConstants.boardCols, (i) => i)..shuffle(_random);
+        for (int i = 0; i < _blocks.length; i++) {
+          _blocks[i].col = cols[i % cols.length];
+        }
+        _mascotQuote = 'Đũa sao biển đã hoán đổi vị trí các con cá cho thông thoáng!';
+      }
 
       notifyListeners();
       await Future.delayed(const Duration(milliseconds: 200));
@@ -804,4 +891,7 @@ class GameController extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+  // Alias for legacy magnet calls if needed
+  Future<void> useMagnet() => useWand();
 }

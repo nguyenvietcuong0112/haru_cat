@@ -19,7 +19,7 @@ class _DailyRewardDialogState extends State<DailyRewardDialog> {
     {'day': 2, 'silver': 150, 'gold': 2, 'item': '150 Silver + 2 Gold'},
     {'day': 3, 'silver': 200, 'gold': 0, 'hammer': 1, 'item': '200 Silver + 1 Hammer'},
     {'day': 4, 'silver': 250, 'gold': 5, 'item': '250 Silver + 5 Gold'},
-    {'day': 5, 'silver': 300, 'gold': 0, 'magnet': 1, 'item': '300 Silver + 1 Magnet'},
+    {'day': 5, 'silver': 300, 'gold': 0, 'net': 1, 'item': '300 Silver + 1 Vợt'},
     {'day': 6, 'silver': 350, 'gold': 5, 'wand': 1, 'item': '350 Silver + 5 Gold + 1 Wand'},
     {'day': 7, 'silver': 500, 'gold': 15, 'hammer': 2, 'magnet': 2, 'wand': 2, 'item': 'JACKPOT! 500 Silver + 15 Gold + Boosters!'},
   ];

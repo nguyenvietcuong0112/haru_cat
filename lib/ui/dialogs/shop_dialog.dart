@@ -111,8 +111,8 @@ class _ShopDialogState extends State<ShopDialog> {
                   const SizedBox(height: 8),
 
                   _buildBoosterItem(
-                    title: '3x Hammer Pack',
-                    desc: 'Smashes any stubborn block directly',
+                    title: '3x Búa Ốc',
+                    desc: 'Phá băng, chỉ cần phá 1 lần',
                     imageAsset: 'assets/images/sprites/boosters/booster_hammer.png',
                     goldCost: 8,
                     onBuy: () {
@@ -120,35 +120,17 @@ class _ShopDialogState extends State<ShopDialog> {
                         _playerData.addBooster('hammer', 3);
                         _audio.playBooster();
                         setState(() {});
-                        _showNotice('Purchased 3 Hammers!');
+                        _showNotice('Đã mua 3 Búa!');
                       } else {
-                        _showNotice('Not enough Gold Fish!', isSuccess: false);
+                        _showNotice('Không đủ Vàng!', isSuccess: false);
                       }
                     },
                   ),
                   const SizedBox(height: 8),
 
                   _buildBoosterItem(
-                    title: '3x Magnet Pack',
-                    desc: 'Pulls all floating blocks down instantly',
-                    imageAsset: 'assets/images/sprites/boosters/booster_magnet.png',
-                    goldCost: 8,
-                    onBuy: () {
-                      if (_playerData.spendGoldFish(8)) {
-                        _playerData.addBooster('magnet', 3);
-                        _audio.playBooster();
-                        setState(() {});
-                        _showNotice('Purchased 3 Magnets!');
-                      } else {
-                        _showNotice('Not enough Gold Fish!', isSuccess: false);
-                      }
-                    },
-                  ),
-                  const SizedBox(height: 8),
-
-                  _buildBoosterItem(
-                    title: '3x Magic Wand Pack',
-                    desc: 'Blasts 2 neighboring obstacles',
+                    title: '3x Đũa Sao Biển',
+                    desc: 'Biến đổi các con cá cho thông thoáng',
                     imageAsset: 'assets/images/sprites/boosters/booster_magic_wand.png',
                     goldCost: 8,
                     onBuy: () {
@@ -156,9 +138,27 @@ class _ShopDialogState extends State<ShopDialog> {
                         _playerData.addBooster('wand', 3);
                         _audio.playBooster();
                         setState(() {});
-                        _showNotice('Purchased 3 Magic Wands!');
+                        _showNotice('Đã mua 3 Đũa thần!');
                       } else {
-                        _showNotice('Not enough Gold Fish!', isSuccess: false);
+                        _showNotice('Không đủ Vàng!', isSuccess: false);
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 8),
+
+                  _buildBoosterItem(
+                    title: '3x Vợt Cá',
+                    desc: 'Thu thập dần các con cá để cho thông thoáng',
+                    imageAsset: 'assets/images/sprites/boosters/booster_magnet.png',
+                    goldCost: 8,
+                    onBuy: () {
+                      if (_playerData.spendGoldFish(8)) {
+                        _playerData.addBooster('net', 3);
+                        _audio.playBooster();
+                        setState(() {});
+                        _showNotice('Đã mua 3 Vợt!');
+                      } else {
+                        _showNotice('Không đủ Vàng!', isSuccess: false);
                       }
                     },
                   ),
@@ -177,17 +177,22 @@ class _ShopDialogState extends State<ShopDialog> {
                   const SizedBox(height: 8),
 
                   _buildExchangeCard(
-                    title: '100 Silver ➔ 5 Gold',
-                    subtitle: 'Exchange extra silver for valuable gold',
-                    buttonText: '100 Silver',
+                    title: '50 Bạc ➔ 1 Vàng',
+                    subtitle: 'Đổi Bạc lấy Vàng (Tối đa: ${_playerData.goldExchangedFromSilver}/${_playerData.maxGoldExchange} Vàng)',
+                    buttonText: _playerData.goldExchangedFromSilver >= _playerData.maxGoldExchange
+                        ? 'Hết lượt'
+                        : '50 Bạc',
                     onTap: () {
-                      if (_playerData.spendSilverFish(100)) {
-                        _playerData.addGoldFish(5);
+                      if (_playerData.goldExchangedFromSilver >= _playerData.maxGoldExchange) {
+                        _showNotice('Đã đạt giới hạn đổi tối đa 10 Vàng!', isSuccess: false);
+                        return;
+                      }
+                      if (_playerData.exchangeSilverForGold(silverCost: 50)) {
                         _audio.playWin();
                         setState(() {});
-                        _showNotice('Exchanged 100 Silver for 5 Gold!');
+                        _showNotice('Đổi thành công 50 Bạc lấy 1 Vàng (${_playerData.goldExchangedFromSilver}/${_playerData.maxGoldExchange})!');
                       } else {
-                        _showNotice('Not enough Silver Fish!', isSuccess: false);
+                        _showNotice('Không đủ Bạc (cần 50 Bạc)!', isSuccess: false);
                       }
                     },
                   ),

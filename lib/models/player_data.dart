@@ -84,6 +84,8 @@ class PlayerData extends ChangeNotifier {
   int _lifetimeScore = 0;
   int _totalLinesCleared = 0;
 
+  int _goldExchangedFromSilver = 0;
+
   bool _soundEnabled = true;
   bool _musicEnabled = true;
   bool _vibrationEnabled = true;
@@ -91,11 +93,14 @@ class PlayerData extends ChangeNotifier {
   // Getters
   int get goldFish => _goldFish;
   int get silverFish => _silverFish;
+  int get goldExchangedFromSilver => _goldExchangedFromSilver;
+  int get maxGoldExchange => 10;
   String get selectedCharacter => _selectedCharacter;
   Set<String> get unlockedCharacters => _unlockedCharacters;
 
   int get hammerCount => _hammerCount;
   int get magnetCount => _magnetCount;
+  int get netCount => _magnetCount;
   int get wandCount => _wandCount;
 
   int get dailyRewardDay => _dailyRewardDay;
@@ -131,6 +136,7 @@ class PlayerData extends ChangeNotifier {
       _bestScore = prefs.getInt('best_score') ?? 0;
       _lifetimeScore = prefs.getInt('lifetime_score') ?? 0;
       _totalLinesCleared = prefs.getInt('total_lines_cleared') ?? 0;
+      _goldExchangedFromSilver = prefs.getInt('gold_exchanged_from_silver') ?? 0;
 
       _soundEnabled = prefs.getBool('sfx_enabled') ?? true;
       _musicEnabled = prefs.getBool('bgm_enabled') ?? true;
@@ -158,6 +164,7 @@ class PlayerData extends ChangeNotifier {
       await prefs.setInt('best_score', _bestScore);
       await prefs.setInt('lifetime_score', _lifetimeScore);
       await prefs.setInt('total_lines_cleared', _totalLinesCleared);
+      await prefs.setInt('gold_exchanged_from_silver', _goldExchangedFromSilver);
 
       await prefs.setBool('sfx_enabled', _soundEnabled);
       await prefs.setBool('bgm_enabled', _musicEnabled);
@@ -194,11 +201,25 @@ class PlayerData extends ChangeNotifier {
     return true;
   }
 
+  /// Exchange Silver for Gold (maximum 10 Gold limit per design spec)
+  bool exchangeSilverForGold({int silverCost = 50}) {
+    if (_goldExchangedFromSilver >= maxGoldExchange) return false;
+    if (_silverFish < silverCost) return false;
+
+    _silverFish -= silverCost;
+    _goldFish += 1;
+    _goldExchangedFromSilver += 1;
+    _save();
+    notifyListeners();
+    return true;
+  }
+
   // Booster Operations
   int getBoosterCount(String boosterType) {
     switch (boosterType) {
       case 'hammer':
         return _hammerCount;
+      case 'net':
       case 'magnet':
         return _magnetCount;
       case 'wand':
@@ -213,6 +234,7 @@ class PlayerData extends ChangeNotifier {
       case 'hammer':
         _hammerCount += count;
         break;
+      case 'net':
       case 'magnet':
         _magnetCount += count;
         break;
@@ -230,6 +252,7 @@ class PlayerData extends ChangeNotifier {
         if (_hammerCount <= 0) return false;
         _hammerCount--;
         break;
+      case 'net':
       case 'magnet':
         if (_magnetCount <= 0) return false;
         _magnetCount--;

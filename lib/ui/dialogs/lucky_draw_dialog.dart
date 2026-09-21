@@ -26,7 +26,7 @@ class _LuckyDrawDialogState extends State<LuckyDrawDialog> with SingleTickerProv
     {'label': '1 Hammer', 'type': 'hammer', 'amount': 1, 'color': Color(0xFF81D4FA)},
     {'label': '250 Silver', 'type': 'silver', 'amount': 250, 'color': Color(0xFFAED581)},
     {'label': '10 Gold', 'type': 'gold', 'amount': 10, 'color': Color(0xFFFFB74D)},
-    {'label': '1 Magnet', 'type': 'magnet', 'amount': 1, 'color': Color(0xFFBA68C8)},
+    {'label': '1 Vợt', 'type': 'net', 'amount': 1, 'color': Color(0xFFBA68C8)},
     {'label': '1 Wand', 'type': 'wand', 'amount': 1, 'color': Color(0xFF4DB6AC)},
     {'label': '20 Gold', 'type': 'gold', 'amount': 20, 'color': Color(0xFFFFD54F)},
   ];

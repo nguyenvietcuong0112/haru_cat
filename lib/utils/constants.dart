@@ -7,7 +7,8 @@ class GameConstants {
 
   // Boosters
   static const String boosterHammer = 'hammer';
-  static const String boosterMagnet = 'magnet';
+  static const String boosterNet = 'net';
+  static const String boosterMagnet = 'net'; // Alias for backwards compatibility
   static const String boosterWand = 'wand';
 
   // Colors

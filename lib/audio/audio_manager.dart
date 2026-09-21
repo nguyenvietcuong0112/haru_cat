@@ -7,6 +7,9 @@ class AudioManager {
   AudioManager._internal();
 
   AudioPlayer? _bgmPlayer;
+  final List<AudioPlayer> _sfxPlayers = [];
+  int _sfxIndex = 0;
+  static const int _sfxPoolSize = 6;
 
   bool _isBgmEnabled = true;
   bool _isSfxEnabled = true;
@@ -22,6 +25,12 @@ class AudioManager {
 
       _bgmPlayer = AudioPlayer();
       await _bgmPlayer?.setReleaseMode(ReleaseMode.loop);
+
+      for (var i = 0; i < _sfxPoolSize; i++) {
+        final p = AudioPlayer();
+        await p.setPlayerMode(PlayerMode.lowLatency);
+        _sfxPlayers.add(p);
+      }
     } catch (_) {
       // Platform channels not available in headless tests
     }
@@ -76,10 +85,16 @@ class AudioManager {
   Future<void> playSfx(String soundFile) async {
     if (!_isSfxEnabled) return;
     try {
-      // Create separate player instance or reuse for rapid SFX
-      final sfxPlayer = AudioPlayer();
-      await sfxPlayer.play(AssetSource('audio/sfx/$soundFile'), volume: 0.8);
-      sfxPlayer.onPlayerComplete.listen((_) => sfxPlayer.dispose());
+      if (_sfxPlayers.isEmpty) {
+        final p = AudioPlayer();
+        await p.setPlayerMode(PlayerMode.lowLatency);
+        await p.play(AssetSource('audio/sfx/$soundFile'), volume: 0.8);
+        return;
+      }
+      final player = _sfxPlayers[_sfxIndex];
+      _sfxIndex = (_sfxIndex + 1) % _sfxPlayers.length;
+      await player.stop();
+      await player.play(AssetSource('audio/sfx/$soundFile'), volume: 0.8);
     } catch (_) {}
   }
 

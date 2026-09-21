@@ -19,6 +19,7 @@ class CatBlock {
   int bombCountdown;
   bool isClearing;
   bool isFalling;
+  final int variant; // 0 for variant A, 1 for variant B
 
   CatBlock({
     required this.id,
@@ -30,6 +31,7 @@ class CatBlock {
     this.bombCountdown = 5,
     this.isClearing = false,
     this.isFalling = false,
+    this.variant = 0,
   }) {
     if (type == BlockType.ice) {
       health = 2;
@@ -60,6 +62,37 @@ class CatBlock {
       case BlockType.sealed:
         return 'assets/images/sprites/cats/gameplay_cat3_${w}cell.png';
     }
+  }
+
+  /// Fish sprite path corresponding to the new Fish design assets
+  String get fishSpriteAsset {
+    final w = width.clamp(1, 4);
+    final suffix = variant == 1 ? 'b' : 'a';
+    switch (type) {
+      case BlockType.cat1:
+      case BlockType.cat2:
+      case BlockType.cat3:
+      case BlockType.ice:
+      case BlockType.sealed:
+      case BlockType.lightning:
+        return 'assets/images/sprites/fish/fish_${w}cell_$suffix.png';
+      case BlockType.bomb:
+        return 'assets/images/sprites/fish/bomb_${w}cell.png';
+      case BlockType.gift:
+        return 'assets/images/sprites/fish/gift_1cell.png';
+    }
+  }
+
+  /// Overlay sprite path for Ice and Seaweed
+  String? get overlayAsset {
+    final w = width.clamp(1, 4);
+    if (type == BlockType.ice) {
+      return 'assets/images/sprites/fish/ice_${w}cell.png';
+    }
+    if (type == BlockType.sealed) {
+      return 'assets/images/sprites/fish/seaweed_${w}cell.png';
+    }
+    return null;
   }
 
   /// Original 36px-tall sprite specifically designed for the bottom preview slot
@@ -98,6 +131,7 @@ class CatBlock {
       health: health,
       isClearing: isClearing,
       isFalling: isFalling,
+      variant: variant,
     );
   }
 }
