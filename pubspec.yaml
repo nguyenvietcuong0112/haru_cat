@@ -63,12 +63,10 @@ flutter:
     - assets/audio/bgm/
     - assets/audio/sfx/
     - assets/data/levels/
-    - assets/data/localization/
     - assets/images/backgrounds/
     - assets/images/characters/
-    - assets/images/stickers/
     - assets/images/logo/
-    - assets/images/atlases/
+    - assets/images/sprites/fish/
     - assets/images/sprites/cats/
     - assets/images/sprites/boosters/
     - assets/images/sprites/ui/
