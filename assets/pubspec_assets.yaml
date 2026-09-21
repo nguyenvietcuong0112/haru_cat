@@ -1,0 +1,32 @@
+# Copy this into your flutter project's pubspec.yaml:
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - flutter_assets/audio/bgm/
+    - flutter_assets/audio/sfx/
+    - flutter_assets/data/levels/
+    - flutter_assets/data/localization/
+    - flutter_assets/images/backgrounds/
+    - flutter_assets/images/characters/
+    - flutter_assets/images/stickers/
+    - flutter_assets/images/logo/
+    - flutter_assets/images/atlases/
+    - flutter_assets/images/sprites/cats/
+    - flutter_assets/images/sprites/boosters/
+    - flutter_assets/images/sprites/ui/
+
+  fonts:
+    - family: BrandonText
+      fonts:
+        - asset: flutter_assets/fonts/BrandonText-Regular.otf
+        - asset: flutter_assets/fonts/BrandonText-Bold.otf
+          weight: 700
+    - family: JandaManatee
+      fonts:
+        - asset: flutter_assets/fonts/JandaManateeSolid.ttf
+    - family: NotoSans
+      fonts:
+        - asset: flutter_assets/fonts/NotoSans-Bold.ttf
+          weight: 700
