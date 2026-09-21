@@ -9,6 +9,20 @@ import '../utils/constants.dart';
 
 enum GameMode { endless, level }
 
+class RowClearEvent {
+  final int rowIndex;
+  final int points;
+  final int combo;
+  final int timestamp;
+
+  RowClearEvent({
+    required this.rowIndex,
+    required this.points,
+    required this.combo,
+    required this.timestamp,
+  });
+}
+
 class GameController extends ChangeNotifier {
   final GameMode mode;
   final LevelData? levelData;
@@ -86,6 +100,9 @@ class GameController extends ChangeNotifier {
   int? _clearingRowIndex; // Currently clearing row index for animated beam effect
   int? get clearingRowIndex => _clearingRowIndex;
 
+  RowClearEvent? _latestClearEvent;
+  RowClearEvent? get latestClearEvent => _latestClearEvent;
+
   int _frozenTurns = 0; // If magician froze upcoming blocks
 
   final AudioManager _audio = AudioManager();
@@ -118,6 +135,7 @@ class GameController extends ChangeNotifier {
     _nextRowBlocks.clear();
     _activeBooster = null;
     _clearingRowIndex = null;
+    _latestClearEvent = null;
     _frozenTurns = 0;
     _mascotQuote = 'Meow! Let\'s slide and clear blocks!';
 
@@ -501,6 +519,15 @@ class GameController extends ChangeNotifier {
       final r = fullRows[i];
       _clearingRowIndex = r;
       _audio.playClear();
+
+      final currentCombo = max(1, _combo + (i > 0 ? 1 : 0));
+      final rowPoints = GameConstants.boardCols * currentCombo;
+      _latestClearEvent = RowClearEvent(
+        rowIndex: r,
+        points: rowPoints,
+        combo: currentCombo,
+        timestamp: DateTime.now().microsecondsSinceEpoch,
+      );
 
       final rowBlocksToRemove = <CatBlock>{};
       final rowSpecialTriggers = <CatBlock>[];

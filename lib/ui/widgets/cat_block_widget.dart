@@ -44,9 +44,9 @@ class _CatBlockWidgetState extends State<CatBlockWidget> {
       duration: _isDragging
           ? Duration.zero
           : (block.isFalling
-              ? const Duration(milliseconds: 280)
-              : const Duration(milliseconds: 200)),
-      curve: block.isFalling ? Curves.easeOutCubic : Curves.easeOutQuad,
+              ? const Duration(milliseconds: 260)
+              : const Duration(milliseconds: 180)),
+      curve: block.isFalling ? Curves.bounceOut : Curves.easeOutQuad,
       left: currentLeft,
       top: targetTop,
       width: blockWidthPx,
@@ -97,34 +97,38 @@ class _CatBlockWidgetState extends State<CatBlockWidget> {
           widget.controller.slideBlock(block, targetCol);
         },
         child: AnimatedScale(
-          scale: block.isClearing ? 1.12 : 1.0,
-          duration: const Duration(milliseconds: 260),
-          curve: Curves.easeOutBack,
+          scale: block.isClearing ? 1.22 : (_isDragging ? 1.05 : 1.0),
+          duration: const Duration(milliseconds: 240),
+          curve: block.isClearing ? Curves.easeOutBack : Curves.easeInOut,
           child: AnimatedOpacity(
             opacity: block.isClearing
                 ? 0.0
                 : (widget.isPreview || block.row < 0 ? 0.78 : 1.0),
-            duration: const Duration(milliseconds: 260),
-            curve: Curves.easeInOut,
+            duration: const Duration(milliseconds: 240),
+            curve: Curves.easeIn,
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 100),
-              margin: EdgeInsets.all(_isDragging ? 1.0 : 2.5),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(14),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: _isDragging ? 0.35 : 0.20),
-                    offset: Offset(0, _isDragging ? 5 : 3),
-                    blurRadius: _isDragging ? 8 : 4,
-                  ),
-                ],
-              ),
+              margin: const EdgeInsets.all(1.0),
+              decoration: _isDragging
+                  ? BoxDecoration(
+                      borderRadius: BorderRadius.circular(10),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF00E5FF).withOpacity(0.55),
+                          blurRadius: 10,
+                          spreadRadius: 1,
+                        ),
+                      ],
+                    )
+                  : null,
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  // 1. Base Fish / Cat Artwork (tries new fish sprite first, falls back to legacy cat sprite)
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(14),
+                  // 1. Base Fish Artwork with white silhouette flash when clearing
+                  ColorFiltered(
+                    colorFilter: block.isClearing
+                        ? const ColorFilter.mode(Colors.white, BlendMode.srcATop)
+                        : const ColorFilter.mode(Colors.transparent, BlendMode.dst),
                     child: Image.asset(
                       block.fishSpriteAsset,
                       fit: BoxFit.fill,
@@ -136,7 +140,7 @@ class _CatBlockWidgetState extends State<CatBlockWidget> {
                             return Container(
                               decoration: BoxDecoration(
                                 color: Colors.orangeAccent,
-                                borderRadius: BorderRadius.circular(14),
+                                borderRadius: BorderRadius.circular(10),
                               ),
                               alignment: Alignment.center,
                               child: Text(
@@ -258,19 +262,8 @@ class _CatBlockWidgetState extends State<CatBlockWidget> {
                     Positioned.fill(
                       child: Container(
                         decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(10),
                           color: const Color(0xFF00363A).withValues(alpha: 0.22),
-                        ),
-                      ),
-                    ),
-
-                  // 6. Clear Burst Flash Overlay when row is being cleared
-                  if (block.isClearing)
-                    Positioned.fill(
-                      child: Container(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(14),
-                          color: Colors.white.withValues(alpha: 0.65),
                         ),
                       ),
                     ),
