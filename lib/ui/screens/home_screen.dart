@@ -1,15 +1,11 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../../audio/audio_manager.dart';
 import '../../models/player_data.dart';
 import '../../logic/game_controller.dart';
-import '../dialogs/daily_reward_dialog.dart';
-import '../dialogs/lucky_draw_dialog.dart';
-import '../dialogs/character_select_dialog.dart';
-import '../dialogs/shop_dialog.dart';
-import '../dialogs/how_to_play_dialog.dart';
-import '../dialogs/pause_dialog.dart';
 import 'game_screen.dart';
-import 'level_select_screen.dart';
+import '../dialogs/settings_dialog.dart';
+import '../dialogs/shop_dialog.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -22,28 +18,23 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   final AudioManager _audio = AudioManager();
   final PlayerData _playerData = PlayerData();
 
-  late AnimationController _animController;
-  late Animation<double> _bounceAnimation;
+  late AnimationController _swimController;
 
   @override
   void initState() {
     super.initState();
     _playerData.init();
-    _animController = AnimationController(
+    _swimController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1200),
-    )..repeat(reverse: true);
-
-    _bounceAnimation = Tween<double>(begin: -6.0, end: 6.0).animate(
-      CurvedAnimation(parent: _animController, curve: Curves.easeInOut),
-    );
+      duration: const Duration(seconds: 4),
+    )..repeat();
 
     _audio.playBgm();
   }
 
   @override
   void dispose() {
-    _animController.dispose();
+    _swimController.dispose();
     super.dispose();
   }
 
@@ -52,199 +43,158 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     return AnimatedBuilder(
       animation: _playerData,
       builder: (context, _) {
-        final currentChar = _playerData.currentCharacter;
-        final canDaily = _playerData.canClaimDailyReward();
-        final canSpin = _playerData.canFreeSpin();
-
         return Scaffold(
-          body: Stack(
-            children: [
-              // Background Wallpaper
-              Positioned.fill(
-                child: Image.asset(
-                  'assets/images/backgrounds/bg_ingame.png',
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(color: const Color(0xFFF3E5D8)),
-                ),
-              ),
+          body: LayoutBuilder(
+            builder: (context, constraints) {
+              final w = constraints.maxWidth;
+              final h = constraints.maxHeight;
+              final btnWidth = (w * 0.46).clamp(160.0, 220.0);
+              final btnHeight = btnWidth / 2.466;
 
-              SafeArea(
-                child: Column(
+              return SizedBox(
+                width: w,
+                height: h,
+                child: Stack(
+                  fit: StackFit.expand,
                   children: [
-                    // Top Bar: Settings, Silver Fish, Gold Fish
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          // Settings Button
-                          _buildCircleButton(
-                            icon: Icons.settings_rounded,
-                            onTap: () {
-                              _audio.playClick();
-                              showDialog(
-                                context: context,
-                                builder: (_) => PauseDialog(
-                                  onResume: () => Navigator.pop(context),
-                                  onRestart: () => Navigator.pop(context),
-                                  onHome: () => Navigator.pop(context),
-                                ),
-                              );
-                            },
-                          ),
+                    // 1. Background Underwater Scene
+                    Positioned.fill(
+                      child: Image.asset(
+                        'assets/images/backgrounds/bg_home.png',
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(color: const Color(0xFFCBEBFA)),
+                      ),
+                    ),
 
-                          // Currency Wallets
-                          Row(
+                    // 2. Animated Swimming Fish in Ambient Aquarium
+                    Positioned.fill(
+                      child: AnimatedBuilder(
+                        animation: _swimController,
+                        builder: (context, _) {
+                          final t = _swimController.value * 2 * math.pi;
+
+                          return Stack(
                             children: [
-                              // Silver Fish
-                              _buildCurrencyChip(
-                                iconAsset: 'assets/images/sprites/ui/coin-silver-8.png',
-                                amount: '${_playerData.silverFish}',
-                                onTap: () {
-                                  _audio.playClick();
-                                  showDialog(context: context, builder: (_) => const ShopDialog());
-                                },
+                              // Fish 1 (Top Center: Green 4-cell eel)
+                              Positioned(
+                                top: h * 0.285 + math.sin(t) * 4.0,
+                                left: (w - (w * 0.68)) / 2 + math.cos(t * 0.8) * 3.0,
+                                width: w * 0.68,
+                                child: Transform.rotate(
+                                  angle: math.sin(t) * 0.015,
+                                  child: Image.asset(
+                                    'assets/images/sprites/fish/fish_4cell_a.png',
+                                    fit: BoxFit.contain,
+                                  ),
+                                ),
                               ),
-                              const SizedBox(width: 8),
 
-                              // Gold Fish
-                              _buildCurrencyChip(
-                                iconAsset: 'assets/images/sprites/ui/coin-gold-8.png',
-                                amount: '${_playerData.goldFish}',
-                                onTap: () {
-                                  _audio.playClick();
-                                  showDialog(context: context, builder: (_) => const ShopDialog());
-                                },
+                              // Fish 2 (Middle Left: Pink 3-cell fish)
+                              Positioned(
+                                top: h * 0.425 + math.sin(t + 1.2) * 4.0,
+                                left: w * 0.02 + math.cos(t * 0.9 + 1.0) * 3.0,
+                                width: w * 0.42,
+                                child: Transform.rotate(
+                                  angle: math.sin(t + 1.2) * 0.02,
+                                  child: Image.asset(
+                                    'assets/images/sprites/fish/fish_3cell_b.png',
+                                    fit: BoxFit.contain,
+                                  ),
+                                ),
+                              ),
+
+                              // Fish 3 (Middle Right: Small Yellow 2-cell fish)
+                              Positioned(
+                                top: h * 0.425 + math.sin(t + 2.5) * 3.5,
+                                right: w * 0.09 + math.cos(t + 2.0) * 3.0,
+                                width: w * 0.20,
+                                child: Transform.rotate(
+                                  angle: math.sin(t + 2.5) * 0.025,
+                                  child: Image.asset(
+                                    'assets/images/sprites/fish/fish_2cell_a.png',
+                                    fit: BoxFit.contain,
+                                  ),
+                                ),
+                              ),
+
+                              // Fish 4 (Lower Middle Right: Red 4-cell fish, flipped horizontally)
+                              Positioned(
+                                top: h * 0.525 + math.sin(t + 3.8) * 4.5,
+                                right: w * 0.01 + math.cos(t * 0.7 + 3.0) * 4.0,
+                                width: w * 0.56,
+                                child: Transform(
+                                  alignment: Alignment.center,
+                                  transform: Matrix4.identity()..scale(-1.0, 1.0, 1.0),
+                                  child: Transform.rotate(
+                                    angle: math.sin(t + 3.8) * 0.018,
+                                    child: Image.asset(
+                                      'assets/images/sprites/fish/fish_4cell_b.png',
+                                      fit: BoxFit.contain,
+                                    ),
+                                  ),
+                                ),
+                              ),
+
+                              // Fish 5 (Lower Left: Small Yellow 2-cell fish)
+                              Positioned(
+                                top: h * 0.605 + math.sin(t + 5.0) * 3.5,
+                                left: w * 0.16 + math.cos(t + 4.5) * 3.0,
+                                width: w * 0.24,
+                                child: Transform.rotate(
+                                  angle: math.sin(t + 5.0) * 0.02,
+                                  child: Image.asset(
+                                    'assets/images/sprites/fish/fish_2cell_a.png',
+                                    fit: BoxFit.contain,
+                                  ),
+                                ),
                               ),
                             ],
-                          ),
-                        ],
+                          );
+                        },
                       ),
                     ),
 
-                    const Spacer(flex: 1),
+                    // 3. Top Header Bar: Silver Pill, Gold Pill (+), Settings Gear Button
+                    Positioned(
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      child: SafeArea(
+                        bottom: false,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+                          child: Row(
+                            children: [
+                              // Silver Fish Pill
+                              _buildSilverPill(),
 
-                    // Game Logo
-                    Image.asset(
-                      'assets/images/logo/logo.png',
-                      height: 100,
-                      fit: BoxFit.contain,
-                      errorBuilder: (_, __, ___) => const Text(
-                        'HARU CATS',
-                        style: TextStyle(
-                          fontFamily: 'JandaManatee',
-                          fontSize: 36,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF5D4037),
+                              const Spacer(),
+
+                              // Gold Fish Pill (with green plus)
+                              _buildGoldPill(context),
+
+                              const SizedBox(width: 10),
+
+                              // Settings Gear Button
+                              _buildSettingsButton(context),
+                            ],
+                          ),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 12),
 
-                    // Mascot with Speech Bubble
-                    Stack(
-                      alignment: Alignment.topCenter,
-                      clipBehavior: Clip.none,
-                      children: [
-                        // Speech bubble
-                        Positioned(
-                          top: -30,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: const Color(0xFFD6A266), width: 2),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.1),
-                                  blurRadius: 4,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: Text(
-                              'Meow! Welcome back!',
-                              style: const TextStyle(
-                                fontFamily: 'BrandonText',
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF6B4226),
-                              ),
-                            ),
-                          ),
-                        ),
-
-                        // Animated Mascot
-                        AnimatedBuilder(
-                          animation: _bounceAnimation,
-                          builder: (context, child) {
-                            return Transform.translate(
-                              offset: Offset(0, _bounceAnimation.value),
-                              child: child,
-                            );
-                          },
-                          child: Image.asset(
-                            currentChar.imageAsset,
-                            height: 130,
-                            fit: BoxFit.contain,
-                            errorBuilder: (_, __, ___) => const Icon(
-                              Icons.pets,
-                              size: 90,
-                              color: Colors.orange,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 8),
-
-                    // High Score Banner
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF5D4037),
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.15),
-                            blurRadius: 4,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.emoji_events_rounded, color: Color(0xFFFFD54F), size: 18),
-                          const SizedBox(width: 6),
-                          Text(
-                            'BEST: ${_playerData.bestScore}',
-                            style: const TextStyle(
-                              fontFamily: 'JandaManatee',
-                              color: Colors.white,
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const Spacer(flex: 1),
-
-                    // Primary Play Buttons
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 40),
-                      child: Column(
-                        children: [
-                          // PLAY ENDLESS
-                          SizedBox(
-                            width: double.infinity,
-                            height: 54,
-                            child: ElevatedButton.icon(
-                              onPressed: () async {
+                    // 4. Bottom Action Buttons: Play & Shop
+                    Positioned(
+                      bottom: (h * 0.09).clamp(50.0, 95.0),
+                      left: 0,
+                      right: 0,
+                      child: Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // Play Button
+                            _ScaleButton(
+                              onTap: () async {
                                 _audio.playClick();
                                 await Navigator.push(
                                   context,
@@ -252,271 +202,331 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                                     builder: (_) => const GameScreen(mode: GameMode.endless),
                                   ),
                                 );
-                                setState(() {});
+                                if (mounted) setState(() {});
                               },
-                              icon: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 28),
-                              label: const Text(
-                                'PLAY ENDLESS',
-                                style: TextStyle(
-                                  fontFamily: 'JandaManatee',
-                                  color: Colors.white,
-                                  fontSize: 17,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFFFF9800),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-                                elevation: 5,
-                              ),
+                              child: _buildPlayButton(width: btnWidth, height: btnHeight),
                             ),
-                          ),
-                          const SizedBox(height: 12),
 
-                          // LEVEL SELECT
-                          SizedBox(
-                            width: double.infinity,
-                            height: 50,
-                            child: ElevatedButton.icon(
-                              onPressed: () {
+                            SizedBox(height: (h * 0.016).clamp(10.0, 16.0)),
+
+                            // Shop Button
+                            _ScaleButton(
+                              onTap: () {
                                 _audio.playClick();
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(builder: (_) => const LevelSelectScreen()),
+                                showDialog(
+                                  context: context,
+                                  builder: (_) => const ShopDialog(),
                                 );
                               },
-                              icon: const Icon(Icons.map_rounded, color: Colors.white, size: 22),
-                              label: const Text(
-                                'LEVEL SELECT',
-                                style: TextStyle(
-                                  fontFamily: 'JandaManatee',
-                                  color: Colors.white,
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF4CAF50),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-                                elevation: 4,
-                              ),
+                              child: _buildShopButton(width: btnWidth, height: btnHeight),
                             ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const Spacer(flex: 1),
-
-                    // Bottom Meta Navigation Bar: Daily, Lucky, Characters, Shop, How To Play
-                    Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFFF9EE),
-                        borderRadius: BorderRadius.circular(24),
-                        border: Border.all(color: const Color(0xFFD6A266), width: 3),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
-                            blurRadius: 8,
-                            offset: const Offset(0, 3),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceAround,
-                        children: [
-                          // Daily Reward
-                          _buildBottomMenuItem(
-                            icon: Icons.calendar_month_rounded,
-                            label: 'Daily',
-                            hasBadge: canDaily,
-                            badgeText: '!',
-                            onTap: () {
-                              _audio.playClick();
-                              showDialog(context: context, builder: (_) => const DailyRewardDialog());
-                            },
-                          ),
-
-                          // Lucky Draw
-                          _buildBottomMenuItem(
-                            icon: Icons.rotate_right_rounded,
-                            label: 'Lucky',
-                            hasBadge: canSpin,
-                            badgeText: 'FREE',
-                            onTap: () {
-                              _audio.playClick();
-                              showDialog(context: context, builder: (_) => const LuckyDrawDialog());
-                            },
-                          ),
-
-                          // Characters
-                          _buildBottomMenuItem(
-                            icon: Icons.pets_rounded,
-                            label: 'Costume',
-                            hasBadge: false,
-                            onTap: () {
-                              _audio.playClick();
-                              showDialog(context: context, builder: (_) => const CharacterSelectDialog());
-                            },
-                          ),
-
-                          // Shop
-                          _buildBottomMenuItem(
-                            icon: Icons.storefront_rounded,
-                            label: 'Shop',
-                            hasBadge: false,
-                            onTap: () {
-                              _audio.playClick();
-                              showDialog(context: context, builder: (_) => const ShopDialog());
-                            },
-                          ),
-
-                          // How To Play
-                          _buildBottomMenuItem(
-                            icon: Icons.help_outline_rounded,
-                            label: 'Rules',
-                            hasBadge: false,
-                            onTap: () {
-                              _audio.playClick();
-                              showDialog(context: context, builder: (_) => const HowToPlayDialog());
-                            },
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ],
                 ),
-              ),
-            ],
+              );
+            },
           ),
         );
       },
     );
   }
 
-  Widget _buildCircleButton({required IconData icon, required VoidCallback onTap}) {
+  // --- Top Bar Widgets ---
+
+  Widget _buildSilverPill() {
+    return Container(
+      constraints: const BoxConstraints(minWidth: 95, maxHeight: 34),
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.92),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFF6DC4D8), width: 2.0),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF5AA5B8).withOpacity(0.25),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Image.asset(
+            'assets/images/sprites/ui/coin-silver-8.png',
+            width: 22,
+            height: 22,
+            errorBuilder: (_, __, ___) => const Icon(Icons.circle, size: 18, color: Colors.grey),
+          ),
+          const SizedBox(width: 5),
+          Padding(
+            padding: const EdgeInsets.only(right: 5),
+            child: Text(
+              '${_playerData.silverFish}',
+              style: const TextStyle(
+                fontFamily: 'BrandonText',
+                fontSize: 15,
+                fontWeight: FontWeight.w900,
+                fontStyle: FontStyle.italic,
+                color: Color(0xFF333333),
+                letterSpacing: 0.5,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGoldPill(BuildContext context) {
     return GestureDetector(
-      onTap: onTap,
+      onTap: () {
+        _audio.playClick();
+        showDialog(context: context, builder: (_) => const ShopDialog());
+      },
       child: Container(
-        padding: const EdgeInsets.all(8),
+        constraints: const BoxConstraints(minWidth: 95, maxHeight: 34),
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
         decoration: BoxDecoration(
-          color: const Color(0xFFFFF8E7),
-          shape: BoxShape.circle,
-          border: Border.all(color: const Color(0xFFD6A266), width: 2),
+          color: Colors.white.withOpacity(0.92),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: const Color(0xFF6DC4D8), width: 2.0),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.12),
+              color: const Color(0xFF5AA5B8).withOpacity(0.25),
               blurRadius: 4,
               offset: const Offset(0, 2),
             ),
           ],
         ),
-        child: Icon(icon, color: const Color(0xFF5D4037), size: 22),
-      ),
-    );
-  }
-
-  Widget _buildCurrencyChip({
-    required String iconAsset,
-    required String amount,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        decoration: BoxDecoration(
-          color: const Color(0xFFFFF8E7),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: const Color(0xFFD6A266), width: 2),
-        ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Image.asset(
-              iconAsset,
-              width: 20,
-              height: 20,
-              errorBuilder: (_, __, ___) => const Icon(Icons.circle, size: 16, color: Colors.amber),
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Image.asset(
+                  'assets/images/sprites/ui/coin-gold-8.png',
+                  width: 22,
+                  height: 22,
+                  errorBuilder: (_, __, ___) => const Icon(Icons.circle, size: 18, color: Colors.amber),
+                ),
+                Positioned(
+                  bottom: -1,
+                  right: -1,
+                  child: Container(
+                    padding: const EdgeInsets.all(1),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF4CAF50),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.add, size: 8, color: Colors.white),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(width: 4),
-            Text(
-              amount,
-              style: const TextStyle(
-                fontFamily: 'JandaManatee',
-                fontSize: 13,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF5D4037),
+            const SizedBox(width: 5),
+            Padding(
+              padding: const EdgeInsets.only(right: 5),
+              child: Text(
+                '${_playerData.goldFish}',
+                style: const TextStyle(
+                  fontFamily: 'BrandonText',
+                  fontSize: 15,
+                  fontWeight: FontWeight.w900,
+                  fontStyle: FontStyle.italic,
+                  color: Color(0xFF333333),
+                  letterSpacing: 0.5,
+                ),
               ),
             ),
-            const SizedBox(width: 4),
-            const Icon(Icons.add_circle, size: 14, color: Colors.orange),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildBottomMenuItem({
-    required IconData icon,
-    required String label,
-    required bool hasBadge,
-    String? badgeText,
-    required VoidCallback onTap,
-  }) {
+  Widget _buildSettingsButton(BuildContext context) {
     return GestureDetector(
-      onTap: onTap,
+      onTap: () {
+        _audio.playClick();
+        showDialog(context: context, builder: (_) => const SettingsDialog());
+      },
+      child: Image.asset(
+        'assets/images/button/Btn_Settings.png',
+        width: 38,
+        height: 38,
+        fit: BoxFit.contain,
+        errorBuilder: (_, __, ___) => Container(
+          padding: const EdgeInsets.all(7),
+          decoration: BoxDecoration(
+            color: const Color(0xFFB3E5FC),
+            shape: BoxShape.circle,
+            border: Border.all(color: const Color(0xFF6DC4D8), width: 2),
+          ),
+          child: const Icon(Icons.settings, color: Colors.white, size: 20),
+        ),
+      ),
+    );
+  }
+
+  // --- Bottom Button Widgets ---
+
+  Widget _buildPlayButton({required double width, required double height}) {
+    final fontSize = (width * 0.18).clamp(26.0, 36.0);
+
+    return Container(
+      width: width,
+      height: height,
+      decoration: const BoxDecoration(
+        image: DecorationImage(
+          image: AssetImage('assets/images/button/Btn_Play.png'),
+          fit: BoxFit.contain,
+        ),
+      ),
+      alignment: const Alignment(0, -0.22),
       child: Stack(
-        clipBehavior: Clip.none,
         alignment: Alignment.center,
         children: [
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.orange.shade50,
-                  borderRadius: BorderRadius.circular(12),
+          // Dark green stroke outline
+          Text(
+            'Play',
+            style: TextStyle(
+              fontFamily: 'JandaManatee',
+              fontSize: fontSize,
+              fontWeight: FontWeight.bold,
+              foreground: Paint()
+                ..style = PaintingStyle.stroke
+                ..strokeWidth = 5.5
+                ..color = const Color(0xFF265814),
+              shadows: const [
+                Shadow(
+                  offset: Offset(0, 3),
+                  blurRadius: 4,
+                  color: Color(0xFF14300A),
                 ),
-                child: Icon(icon, color: Colors.orange.shade800, size: 22),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                label,
-                style: const TextStyle(
-                  fontFamily: 'BrandonText',
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF6B4226),
-                ),
-              ),
-            ],
-          ),
-          if (hasBadge)
-            Positioned(
-              top: -4,
-              right: -4,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                decoration: BoxDecoration(
-                  color: Colors.red,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  badgeText ?? '!',
-                  style: const TextStyle(
-                    fontFamily: 'BrandonText',
-                    fontSize: 9,
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
+              ],
             ),
+          ),
+          // White fill
+          Text(
+            'Play',
+            style: TextStyle(
+              fontFamily: 'JandaManatee',
+              fontSize: fontSize,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildShopButton({required double width, required double height}) {
+    final fontSize = (width * 0.17).clamp(24.0, 34.0);
+
+    return Container(
+      width: width,
+      height: height,
+      decoration: const BoxDecoration(
+        image: DecorationImage(
+          image: AssetImage('assets/images/button/Btn_Shop.png'),
+          fit: BoxFit.contain,
+        ),
+      ),
+      alignment: const Alignment(0, -0.22),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // Dark golden/brown stroke outline
+          Text(
+            'Shop',
+            style: TextStyle(
+              fontFamily: 'JandaManatee',
+              fontSize: fontSize,
+              fontWeight: FontWeight.bold,
+              foreground: Paint()
+                ..style = PaintingStyle.stroke
+                ..strokeWidth = 5.5
+                ..color = const Color(0xFF6D4D0D),
+              shadows: const [
+                Shadow(
+                  offset: Offset(0, 3),
+                  blurRadius: 4,
+                  color: Color(0xFF402D06),
+                ),
+              ],
+            ),
+          ),
+          // White fill
+          Text(
+            'Shop',
+            style: TextStyle(
+              fontFamily: 'JandaManatee',
+              fontSize: fontSize,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Interactive button with smooth scale feedback on tap
+class _ScaleButton extends StatefulWidget {
+  final Widget child;
+  final VoidCallback onTap;
+
+  const _ScaleButton({required this.child, required this.onTap});
+
+  @override
+  State<_ScaleButton> createState() => _ScaleButtonState();
+}
+
+class _ScaleButtonState extends State<_ScaleButton> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 90),
+    );
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.93).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => _controller.forward(),
+      onTapUp: (_) {
+        _controller.reverse();
+        widget.onTap();
+      },
+      onTapCancel: () => _controller.reverse(),
+      child: AnimatedBuilder(
+        animation: _scaleAnimation,
+        builder: (context, child) => Transform.scale(
+          scale: _scaleAnimation.value,
+          child: child,
+        ),
+        child: widget.child,
       ),
     );
   }

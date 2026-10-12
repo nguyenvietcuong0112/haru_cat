@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../logic/game_controller.dart';
 import '../../models/player_data.dart';
 import '../dialogs/shop_dialog.dart';
+import '../dialogs/character_select_dialog.dart';
 
 class ScoreHeader extends StatelessWidget {
   final GameController controller;
@@ -16,7 +17,6 @@ class ScoreHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final currentChar = PlayerData().currentCharacter;
-    final isReady = controller.isSkillReady;
 
     return AnimatedBuilder(
       animation: PlayerData(),
@@ -32,20 +32,22 @@ class ScoreHeader extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // Silver Coin Pill
+                  // Silver Coin Pill (bỏ dấu + theo feedback)
                   _buildCurrencyPill(
                     context,
                     iconAsset: 'assets/images/sprites/ui/coin-silver-8.png',
                     amount: '${playerData.silverFish}',
                     multiplier: controller.silverMultiplier,
+                    showAddButton: false,
                     onTap: () => showDialog(context: context, builder: (_) => const ShopDialog()),
                   ),
 
-                  // Gold Coin Pill
+                  // Gold Coin Pill (giữ dấu + để nạp)
                   _buildCurrencyPill(
                     context,
                     iconAsset: 'assets/images/sprites/ui/coin-gold-8.png',
                     amount: '${playerData.goldFish}',
+                    showAddButton: true,
                     onTap: () => showDialog(context: context, builder: (_) => const ShopDialog()),
                   ),
 
@@ -71,66 +73,77 @@ class ScoreHeader extends StatelessWidget {
               ),
               const SizedBox(height: 6),
 
-              // Row 2: Character Avatar + Skill meter (left), and Score Pill (right)
+              // Row 2: Collection Button (left), and Score Pill (right)
               Row(
                 children: [
-                  // Avatar with circular skill meter
+                  // Collection Button (đổi từ Skill Button theo feedback)
                   GestureDetector(
-                    onTap: isReady ? () => controller.activateSkill() : null,
-                    child: Stack(
-                      alignment: Alignment.center,
-                      clipBehavior: Clip.none,
-                      children: [
-                        SizedBox(
-                          width: 52,
-                          height: 52,
-                          child: CircularProgressIndicator(
-                            value: controller.skillCharge,
-                            strokeWidth: 4,
-                            backgroundColor: Colors.blue.shade100,
-                            color: isReady ? Colors.amber : Colors.cyan,
+                    onTap: () => showDialog(
+                      context: context,
+                      builder: (_) => const CharacterSelectDialog(),
+                    ),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE0F7FA),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: const Color(0xFF80DEEA), width: 2),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.08),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
                           ),
-                        ),
-                        Container(
-                          width: 44,
-                          height: 44,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: const Color(0xFFE0F7FA),
-                            border: Border.all(
-                              color: isReady ? Colors.amber : Colors.transparent,
-                              width: 2,
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 34,
+                            height: 34,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.white,
+                              border: Border.all(color: const Color(0xFF80DEEA), width: 1.5),
                             ),
-                          ),
-                          child: ClipOval(
-                            child: Image.asset(
-                              currentChar.imageAsset,
-                              fit: BoxFit.contain,
-                              errorBuilder: (_, __, ___) => const Icon(Icons.sailing, color: Colors.cyan, size: 24),
-                            ),
-                          ),
-                        ),
-                        if (isReady)
-                          Positioned(
-                            bottom: -4,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                              decoration: BoxDecoration(
-                                color: Colors.red,
-                                borderRadius: BorderRadius.circular(8),
+                            child: ClipOval(
+                              child: Image.asset(
+                                currentChar.imageAsset,
+                                fit: BoxFit.contain,
+                                errorBuilder: (_, __, ___) => const Icon(Icons.collections_bookmark_rounded, color: Colors.cyan, size: 20),
                               ),
-                              child: const Text(
-                                'SKILL!',
+                            ),
+                          ),
+                          const SizedBox(width: 5),
+                          const Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                'COLLECTION',
                                 style: TextStyle(
                                   fontFamily: 'BrandonText',
-                                  fontSize: 9,
+                                  fontSize: 8,
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.white,
+                                  color: Color(0xFF006064),
+                                  letterSpacing: 0.5,
                                 ),
                               ),
-                            ),
+                              Text(
+                                'Bộ sưu tập',
+                                style: TextStyle(
+                                  fontFamily: 'BrandonText',
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF00838F),
+                                ),
+                              ),
+                            ],
                           ),
-                      ],
+                          const SizedBox(width: 2),
+                        ],
+                      ),
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -216,17 +229,6 @@ class ScoreHeader extends StatelessWidget {
                   ),
                 ],
               ),
-
-              // Boat Mascot Floating above the water tank
-              Transform.translate(
-                offset: const Offset(0, 4),
-                child: Image.asset(
-                  'assets/images/sprites/ui/boat_mascot.png',
-                  height: 64,
-                  fit: BoxFit.contain,
-                  errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-                ),
-              ),
             ],
           ),
         );
@@ -239,6 +241,7 @@ class ScoreHeader extends StatelessWidget {
     required String iconAsset,
     required String amount,
     double? multiplier,
+    bool showAddButton = true,
     required VoidCallback onTap,
   }) {
     return GestureDetector(
@@ -267,15 +270,17 @@ class ScoreHeader extends StatelessWidget {
               fit: BoxFit.contain,
               errorBuilder: (_, __, ___) => const Icon(Icons.circle, size: 16, color: Colors.amber),
             ),
-            const SizedBox(width: 4),
-            Container(
-              padding: const EdgeInsets.all(2),
-              decoration: const BoxDecoration(
-                color: Color(0xFF4CAF50),
-                shape: BoxShape.circle,
+            if (showAddButton) ...[
+              const SizedBox(width: 4),
+              Container(
+                padding: const EdgeInsets.all(2),
+                decoration: const BoxDecoration(
+                  color: Color(0xFF4CAF50),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.add, size: 10, color: Colors.white),
               ),
-              child: const Icon(Icons.add, size: 10, color: Colors.white),
-            ),
+            ],
             const SizedBox(width: 6),
             Text(
               amount,

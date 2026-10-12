@@ -64,6 +64,7 @@ flutter:
     - assets/audio/sfx/
     - assets/data/levels/
     - assets/images/backgrounds/
+    - assets/images/button/
     - assets/images/characters/
     - assets/images/logo/
     - assets/images/sprites/fish/

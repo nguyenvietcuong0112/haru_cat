@@ -29,13 +29,14 @@ class _GameBoardState extends State<GameBoard> {
         final isEndless = controller.mode == GameMode.endless;
 
         // Calculate available space, reserving space for top boat mascot
-        const outerPadding = 5.0;
+        const outerPadding = 4.0;
         const outerBorder = 3.0;
-        const extraSpace = (outerPadding + outerBorder) * 2; // 16.0
-        const boatHeight = 38.0;
+        const extraSpace = (outerPadding + outerBorder) * 2; // 14.0
+        const boatHeight = 36.0;
 
-        final availableW = constraints.maxWidth - extraSpace - 8;
-        final availableH = constraints.maxHeight - extraSpace - 16 - boatHeight;
+        // Safety margin of 12.0px to prevent any fractional subpixel rounding overflow
+        final availableW = constraints.maxWidth - extraSpace - 8.0;
+        final availableH = constraints.maxHeight - extraSpace - boatHeight - 12.0;
 
         // In endless mode: 10 active rows (0..9) + 1 preview row (-1) = 11 total rows
         final totalRows = isEndless ? (GameConstants.boardRows + 1) : GameConstants.boardRows;
@@ -56,7 +57,7 @@ class _GameBoardState extends State<GameBoard> {
                 // 0. Cute Floating Boat Mascot on surface of water tank
                 _FloatingBoatWidget(
                   isHappy: controller.clearingRowIndex != null,
-                  width: min(boardW * 0.42, 130.0),
+                  height: boatHeight,
                 ),
 
                 // 1. Water Tank Board
@@ -275,11 +276,11 @@ class _GameBoardState extends State<GameBoard> {
 /// Floating Boat Mascot that bobs gently on the water tank waves
 class _FloatingBoatWidget extends StatefulWidget {
   final bool isHappy;
-  final double width;
+  final double height;
 
   const _FloatingBoatWidget({
     required this.isHappy,
-    required this.width,
+    this.height = 36.0,
   });
 
   @override
@@ -307,27 +308,29 @@ class _FloatingBoatWidgetState extends State<_FloatingBoatWidget>
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _animController,
-      builder: (context, child) {
-        final phase = _animController.value * 2 * pi;
-        final waveY = sin(phase) * 2.2 + (widget.isHappy ? -6.0 : 0.0);
-        final tilt = sin(phase * 0.8) * 0.025;
+    return SizedBox(
+      height: widget.height,
+      child: AnimatedBuilder(
+        animation: _animController,
+        builder: (context, child) {
+          final phase = _animController.value * 2 * pi;
+          final waveY = sin(phase) * 2.0 + (widget.isHappy ? -4.0 : 0.0);
+          final tilt = sin(phase * 0.8) * 0.025;
 
-        return Transform.translate(
-          offset: Offset(0, waveY),
-          child: Transform.rotate(
-            angle: tilt,
-            child: Image.asset(
-              'assets/images/sprites/ui/boat_mascot.png',
-              width: widget.width,
-              height: widget.width * 0.5,
-              fit: BoxFit.contain,
-              errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+          return Transform.translate(
+            offset: Offset(0, waveY),
+            child: Transform.rotate(
+              angle: tilt,
+              child: Image.asset(
+                'assets/images/sprites/ui/boat_mascot.png',
+                height: widget.height,
+                fit: BoxFit.contain,
+                errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+              ),
             ),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 }

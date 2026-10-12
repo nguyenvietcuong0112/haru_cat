@@ -65,11 +65,15 @@ class _BoardEffectsOverlayState extends State<BoardEffectsOverlay>
     final event = widget.controller.latestClearEvent;
     if (event != null && event.timestamp != _lastProcessedTimestamp) {
       _lastProcessedTimestamp = event.timestamp;
-      _triggerClearEffects(event.rowIndex, event.points, event.combo);
+      _triggerClearEffects(event);
     }
   }
 
-  void _triggerClearEffects(int rowIndex, int points, int combo) {
+  void _triggerClearEffects(RowClearEvent event) {
+    final rowIndex = event.rowIndex;
+    final points = event.points;
+    final combo = event.combo;
+
     final rowY = (GameConstants.boardRows - 1 - rowIndex) * widget.cellSize +
         widget.cellSize / 2;
 
@@ -117,7 +121,20 @@ class _BoardEffectsOverlayState extends State<BoardEffectsOverlay>
       ));
     }
 
-    // 4. Floating arcade score & combo badge
+    // 4. Point popup per individual fish block (đáp ứng feedback: ghi rõ từng con được bao nhiêu điểm)
+    for (final b in event.blocks) {
+      final blockCenterX = (b.col + b.width / 2.0) * widget.cellSize;
+      _floatingTexts.add(_FloatingText(
+        x: blockCenterX,
+        startY: rowY - widget.cellSize * 0.15,
+        title: '+${b.points}',
+        fontSize: 18,
+        color: const Color(0xFFFFF59D),
+        maxLife: 0.75,
+      ));
+    }
+
+    // 5. Floating total row score & combo badge
     String? subtext;
     if (combo >= 4) {
       subtext = 'UNBELIEVABLE! 🔥x$combo';
@@ -131,13 +148,15 @@ class _BoardEffectsOverlayState extends State<BoardEffectsOverlay>
 
     _floatingTexts.add(_FloatingText(
       x: widget.boardWidth / 2,
-      startY: rowY - widget.cellSize * 0.2,
+      startY: rowY - widget.cellSize * 0.65,
       title: '+$points',
       subtitle: subtext,
+      fontSize: 26,
+      color: const Color(0xFFFFD54F),
       maxLife: 0.85,
     ));
 
-    // 5. Tactile screen shake
+    // 6. Tactile screen shake
     _shakeIntensity = 4.0;
 
     if (!_ticker.isActive) {
@@ -314,6 +333,8 @@ class _FloatingText {
   double currentY;
   final String title;
   final String? subtitle;
+  final double fontSize;
+  final Color color;
   double life;
   final double maxLife;
 
@@ -322,6 +343,8 @@ class _FloatingText {
     required this.startY,
     required this.title,
     this.subtitle,
+    this.fontSize = 26.0,
+    this.color = const Color(0xFFFFD54F),
     required this.maxLife,
   })  : currentY = startY,
         life = maxLife;
@@ -479,10 +502,10 @@ class _BoardEffectsPainter extends CustomPainter {
         text: text.title,
         style: TextStyle(
           fontFamily: 'JandaManatee',
-          fontSize: 26,
+          fontSize: text.fontSize,
           fontWeight: FontWeight.w900,
           foreground: Paint()
-            ..color = const Color(0xFFFFD54F).withOpacity(opacity)
+            ..color = text.color.withOpacity(opacity)
             ..style = PaintingStyle.fill,
           shadows: [
             Shadow(

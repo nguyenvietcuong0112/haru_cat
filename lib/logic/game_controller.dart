@@ -9,17 +9,31 @@ import '../utils/constants.dart';
 
 enum GameMode { endless, level }
 
+class ClearedBlockInfo {
+  final int col;
+  final int width;
+  final int points;
+
+  ClearedBlockInfo({
+    required this.col,
+    required this.width,
+    required this.points,
+  });
+}
+
 class RowClearEvent {
   final int rowIndex;
   final int points;
   final int combo;
   final int timestamp;
+  final List<ClearedBlockInfo> blocks;
 
   RowClearEvent({
     required this.rowIndex,
     required this.points,
     required this.combo,
     required this.timestamp,
+    required this.blocks,
   });
 }
 
@@ -327,18 +341,40 @@ class GameController extends ChangeNotifier {
 
     if (autoExplodedBombs.isNotEmpty) {
       _audio.playClear();
-      final toExplode = <CatBlock>{};
+      int totalPenaltySpawned = 0;
+
       for (final eb in autoExplodedBombs) {
-        toExplode.add(eb);
-        for (final b in _blocks) {
-          if ((b.row - eb.row).abs() <= 1 &&
-              (b.col <= eb.col + eb.width && b.col + b.width >= eb.col)) {
-            toExplode.add(b);
+        // Remove the bomb itself
+        _blocks.remove(eb);
+
+        // Penalty: Spawn 2 extra fish blocks into empty cells
+        final emptyCells = <Point<int>>[];
+        for (int r = 0; r < GameConstants.maxVisibleRows - 1; r++) {
+          for (int c = 0; c < GameConstants.boardCols; c++) {
+            if (isCellEmpty(c, r)) {
+              emptyCells.add(Point(c, r));
+            }
+          }
+        }
+        emptyCells.shuffle(_random);
+        int spawned = 0;
+        for (final pt in emptyCells) {
+          if (spawned >= 2) break;
+          if (isCellEmpty(pt.x, pt.y)) {
+            _blocks.add(CatBlock(
+              id: 'penalty_${DateTime.now().microsecondsSinceEpoch}_${pt.x}_${pt.y}',
+              col: pt.x,
+              row: pt.y,
+              width: 1,
+              type: BlockType.cat1,
+              variant: _random.nextInt(2),
+            ));
+            spawned++;
+            totalPenaltySpawned++;
           }
         }
       }
-      _blocks.removeWhere((b) => toExplode.contains(b));
-      _mascotQuote = 'BÙM! Bom tự kích nổ sau 5 lượt!';
+      _mascotQuote = 'BÙM! Bom phát nổ làm rơi thêm $totalPenaltySpawned cá cản trở!';
     }
 
     notifyListeners();
@@ -522,28 +558,31 @@ class GameController extends ChangeNotifier {
 
       final currentCombo = max(1, _combo + (i > 0 ? 1 : 0));
       final rowPoints = GameConstants.boardCols * currentCombo;
-      _latestClearEvent = RowClearEvent(
-        rowIndex: r,
-        points: rowPoints,
-        combo: currentCombo,
-        timestamp: DateTime.now().microsecondsSinceEpoch,
-      );
-
       final rowBlocksToRemove = <CatBlock>{};
       final rowSpecialTriggers = <CatBlock>[];
+      final clearedBlockInfos = <ClearedBlockInfo>[];
 
       for (final b in _blocks) {
         if (b.row == r) {
           if (b.type == BlockType.sealed) {
             b.type = BlockType.cat1;
             _audio.playIceBreak();
-            _mascotQuote = 'Xiềng xích đã vỡ! Mèo tự do rồi meow!';
-          } else if (b.type == BlockType.ice && b.health > 1) {
-            b.health--;
+            _mascotQuote = 'Rong biển đã gỡ! Cá tự do rồi meow!';
+          } else if (b.type == BlockType.ice) {
+            // Clear lần 1: Phá băng! Khối băng vỡ ra thành cá thường
+            b.type = BlockType.cat1;
+            b.health = 1;
             _audio.playIceBreak();
+            _mascotQuote = 'Lớp băng đã vỡ! Cá thoát khỏi băng rồi!';
           } else {
+            // Clear lần 2 (hoặc cá thường): Ăn con cá!
             b.isClearing = true;
             rowBlocksToRemove.add(b);
+            clearedBlockInfos.add(ClearedBlockInfo(
+              col: b.col,
+              width: b.width,
+              points: b.width * currentCombo,
+            ));
 
             if (b.type != BlockType.cat1 && b.type != BlockType.cat2 && b.type != BlockType.cat3) {
               _specialBlocksCleared++;
@@ -574,6 +613,14 @@ class GameController extends ChangeNotifier {
           }
         }
       }
+
+      _latestClearEvent = RowClearEvent(
+        rowIndex: r,
+        points: rowPoints,
+        combo: currentCombo,
+        timestamp: DateTime.now().microsecondsSinceEpoch,
+        blocks: clearedBlockInfos,
+      );
 
       notifyListeners();
       // Shimmer & scale-pop animation delay for current row
@@ -797,6 +844,14 @@ class GameController extends ChangeNotifier {
     if (_activeBooster == null || _isBusy) return;
 
     if (_activeBooster == GameConstants.boosterHammer) {
+      // Quy tắc GDD: Ice block > block. Ưu tiên phá khối băng trước!
+      final hasIce = _blocks.any((b) => b.type == BlockType.ice);
+      if (hasIce && block.type != BlockType.ice) {
+        _mascotQuote = 'Búa ưu tiên phá khối băng trước meow! Hãy chọn khối băng!';
+        notifyListeners();
+        return;
+      }
+
       if (_playerData.useBooster('hammer')) {
         _activeBooster = null;
         _audio.playIceBreak();
