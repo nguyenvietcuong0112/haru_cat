@@ -69,8 +69,8 @@ class _ShopDialogState extends State<ShopDialog> {
                 const SizedBox(height: 8),
 
                 _buildBoosterCard(
-                  title: '3x Búa Ốc',
-                  desc: 'Phá tan tảng băng chỉ với 1 lần đập!',
+                  title: '3x Shell Hammer',
+                  desc: 'Shatters any ice block in a single hit!',
                   imageAsset: 'assets/images/sprites/boosters/booster_hammer.png',
                   goldCost: 8,
                   onBuy: () {
@@ -78,17 +78,17 @@ class _ShopDialogState extends State<ShopDialog> {
                       _playerData.addBooster('hammer', 3);
                       _audio.playBooster();
                       setState(() {});
-                      _showNotice('Đã mua +3 Búa Ốc!');
+                      _showNotice('Purchased +3 Shell Hammers!');
                     } else {
-                      _showNotice('Không đủ Vàng!', isSuccess: false);
+                      _showNotice('Not enough Gold!', isSuccess: false);
                     }
                   },
                 ),
                 const SizedBox(height: 8),
 
                 _buildBoosterCard(
-                  title: '3x Đũa Sao Biển',
-                  desc: 'Biến đổi cá lớn thành cá nhỏ thông thoáng',
+                  title: '3x Starfish Wand',
+                  desc: 'Splits large fish into tiny 1-cell fish!',
                   imageAsset: 'assets/images/sprites/boosters/booster_magic_wand.png',
                   goldCost: 8,
                   onBuy: () {
@@ -96,17 +96,17 @@ class _ShopDialogState extends State<ShopDialog> {
                       _playerData.addBooster('wand', 3);
                       _audio.playBooster();
                       setState(() {});
-                      _showNotice('Đã mua +3 Đũa Sao Biển!');
+                      _showNotice('Purchased +3 Starfish Wands!');
                     } else {
-                      _showNotice('Không đủ Vàng!', isSuccess: false);
+                      _showNotice('Not enough Gold!', isSuccess: false);
                     }
                   },
                 ),
                 const SizedBox(height: 8),
 
                 _buildBoosterCard(
-                  title: '3x Vợt Cá',
-                  desc: 'Vớt ngay 1 chú cá bất kỳ khỏi bể',
+                  title: '3x Scoop Net',
+                  desc: 'Scoops any single fish out of the tank!',
                   imageAsset: 'assets/images/sprites/boosters/booster_magnet.png',
                   goldCost: 8,
                   onBuy: () {
@@ -114,9 +114,9 @@ class _ShopDialogState extends State<ShopDialog> {
                       _playerData.addBooster('net', 3);
                       _audio.playBooster();
                       setState(() {});
-                      _showNotice('Đã mua +3 Vợt Cá!');
+                      _showNotice('Purchased +3 Scoop Nets!');
                     } else {
-                      _showNotice('Không đủ Vàng!', isSuccess: false);
+                      _showNotice('Not enough Gold!', isSuccess: false);
                     }
                   },
                 ),
@@ -128,9 +128,9 @@ class _ShopDialogState extends State<ShopDialog> {
                 _buildExchangeCard(
                   fromIcon: 'assets/images/sprites/ui/coin-silver-8.png',
                   toIcon: 'assets/images/sprites/ui/coin-gold-8.png',
-                  title: '50 Bạc ➔ 1 Vàng',
+                  title: '50 SILVER -> 1 GOLD',
                   subtitle:
-                      'Đã đổi: ${_playerData.goldExchangedFromSilver}/${_playerData.maxGoldExchange} Vàng',
+                      'Exchanged: ${_playerData.goldExchangedFromSilver}/${_playerData.maxGoldExchange} Gold',
                   buttonText: _playerData.goldExchangedFromSilver >= _playerData.maxGoldExchange
                       ? 'MAX'
                       : '50',
@@ -140,17 +140,17 @@ class _ShopDialogState extends State<ShopDialog> {
                   isEnabled: _playerData.goldExchangedFromSilver < _playerData.maxGoldExchange,
                   onTap: () {
                     if (_playerData.goldExchangedFromSilver >= _playerData.maxGoldExchange) {
-                      _showNotice('Đã đạt giới hạn đổi tối đa 10 Vàng!', isSuccess: false);
+                      _showNotice('Max limit of 10 Gold exchanged reached!', isSuccess: false);
                       return;
                     }
                     if (_playerData.exchangeSilverForGold(silverCost: 50)) {
                       _audio.playWin();
                       setState(() {});
                       _showNotice(
-                        'Đổi thành công +1 Vàng (${_playerData.goldExchangedFromSilver}/${_playerData.maxGoldExchange})!',
+                        'Exchanged +1 Gold (${_playerData.goldExchangedFromSilver}/${_playerData.maxGoldExchange})!',
                       );
                     } else {
-                      _showNotice('Không đủ Bạc (cần 50 Bạc)!', isSuccess: false);
+                      _showNotice('Not enough Silver (need 50 Silver)!', isSuccess: false);
                     }
                   },
                 ),
@@ -159,8 +159,8 @@ class _ShopDialogState extends State<ShopDialog> {
                 _buildExchangeCard(
                   fromIcon: 'assets/images/sprites/ui/coin-gold-8.png',
                   toIcon: 'assets/images/sprites/ui/coin-silver-8.png',
-                  title: '10 Vàng ➔ 350 Bạc',
-                  subtitle: 'Nhận ngay kho Bạc lớn',
+                  title: '10 GOLD -> 350 SILVER',
+                  subtitle: 'Get a huge pouch of Silver Fish!',
                   buttonText: '10',
                   buttonCoinAsset: 'assets/images/sprites/ui/coin-gold-8.png',
                   isEnabled: true,
@@ -169,9 +169,9 @@ class _ShopDialogState extends State<ShopDialog> {
                       _playerData.addSilverFish(350);
                       _audio.playWin();
                       setState(() {});
-                      _showNotice('Đổi thành công +350 Bạc!');
+                      _showNotice('Exchanged +350 Silver!');
                     } else {
-                      _showNotice('Không đủ Vàng!', isSuccess: false);
+                      _showNotice('Not enough Gold!', isSuccess: false);
                     }
                   },
                 ),

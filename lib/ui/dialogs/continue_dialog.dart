@@ -117,7 +117,7 @@ class _ContinueDialogState extends State<ContinueDialog> {
               border: Border.all(color: const Color(0xFF81CBE0), width: 1.5),
             ),
             child: const Text(
-              'Hồi sinh ngay để dọn trống 4 hàng trên cùng và giữ nguyên điểm số!',
+              'Revive now to clear the top 4 rows and keep your current score!',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontFamily: 'BrandonText',

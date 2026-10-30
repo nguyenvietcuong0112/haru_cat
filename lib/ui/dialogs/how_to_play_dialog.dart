@@ -14,28 +14,28 @@ class _HowToPlayDialogState extends State<HowToPlayDialog> {
 
   final List<Map<String, String>> _steps = [
     {
-      'title': 'TRƯỢT CÁ TRÁI / PHẢI',
-      'desc': 'Kéo các chú cá trượt ngang sang trái hoặc phải để lấp vào các khoảng trống.',
+      'title': 'SLIDE LEFT & RIGHT',
+      'desc': 'Drag fish horizontally left or right to line them up over empty spaces.',
       'image': 'assets/images/sprites/fish/fish_3cell_b.png',
-      'tip': 'Có bóng mờ phía dưới báo trước vị trí cá sẽ rơi xuống!',
+      'tip': 'Watch the ghost preview below to see where each fish will land!',
     },
     {
-      'title': 'RƠI TỰ DO & LẤP ĐẦY',
-      'desc': 'Khi phía dưới trống, các chú cá bên trên sẽ từ từ trôi xuống bể theo trọng lực.',
+      'title': 'DROP & FILL ROWS',
+      'desc': 'When space opens underneath, fish above gently drift down with gravity.',
       'image': 'assets/images/sprites/fish/fish_4cell_a.png',
-      'tip': 'Lấp kín toàn bộ 8 ô trên 1 hàng ngang để ăn điểm!',
+      'tip': 'Fill all 8 cells across a horizontal row to clear it and score!',
     },
     {
-      'title': 'COMBO TỪ TRÊN XUỐNG',
-      'desc': 'Hàng đầy sẽ ăn lần lượt từ trên xuống dưới, kéo theo chuỗi rơi liên hoàn!',
+      'title': 'TOP-DOWN COMBOS',
+      'desc': 'Full rows clear one by one from top to bottom, triggering chain cascades!',
       'image': 'assets/images/sprites/fish/ice_2cell.png',
-      'tip': 'Cá đóng băng cần ăn 2 lần (hoặc đập 1 nhát bằng Búa Ốc)!',
+      'tip': 'Frozen fish take 2 clears to free - or smash them in 1 hit with a Hammer!',
     },
     {
-      'title': 'ĐẠO CỤ ĐẠI DƯƠNG',
-      'desc': 'Sử dụng Búa Ốc, Đũa Sao Biển và Vợt Cá khi bể sắp chạm vạch cảnh báo đỏ!',
+      'title': 'OCEAN BOOSTERS',
+      'desc': 'Use the Hammer, Starfish Wand, and Scoop Net before fish reach the danger line!',
       'image': 'assets/images/sprites/boosters/booster_hammer.png',
-      'tip': 'Săn Hộp Quà trong bể để nhận Vàng, Bạc & Đạo cụ miễn phí!',
+      'tip': 'Clear Gift Boxes inside rows to earn free Gold, Silver & Boosters!',
     },
   ];
 

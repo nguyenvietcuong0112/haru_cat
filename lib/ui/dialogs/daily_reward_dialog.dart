@@ -16,12 +16,12 @@ class _DailyRewardDialogState extends State<DailyRewardDialog> {
   Map<String, int>? _justClaimed;
 
   final List<Map<String, dynamic>> _rewards = [
-    {'day': 1, 'silver': 100, 'gold': 0, 'item': '100 Bạc'},
-    {'day': 2, 'silver': 150, 'gold': 2, 'item': '150 Bạc + 2 Vàng'},
-    {'day': 3, 'silver': 200, 'gold': 0, 'hammer': 1, 'item': '200 Bạc + 1 Búa'},
-    {'day': 4, 'silver': 250, 'gold': 5, 'item': '250 Bạc + 5 Vàng'},
-    {'day': 5, 'silver': 300, 'gold': 0, 'net': 1, 'item': '300 Bạc + 1 Vợt'},
-    {'day': 6, 'silver': 350, 'gold': 5, 'wand': 1, 'item': '350 Bạc + 5 Vàng + 1 Đũa'},
+    {'day': 1, 'silver': 100, 'gold': 0, 'item': '100 Silver'},
+    {'day': 2, 'silver': 150, 'gold': 2, 'item': '150 Silver + 2 Gold'},
+    {'day': 3, 'silver': 200, 'gold': 0, 'hammer': 1, 'item': '200 Silver + 1 Hammer'},
+    {'day': 4, 'silver': 250, 'gold': 5, 'item': '250 Silver + 5 Gold'},
+    {'day': 5, 'silver': 300, 'gold': 0, 'net': 1, 'item': '300 Silver + 1 Net'},
+    {'day': 6, 'silver': 350, 'gold': 5, 'wand': 1, 'item': '350 Silver + 5 Gold + 1 Wand'},
     {
       'day': 7,
       'silver': 500,
@@ -29,7 +29,7 @@ class _DailyRewardDialogState extends State<DailyRewardDialog> {
       'hammer': 2,
       'magnet': 2,
       'wand': 2,
-      'item': 'KHO BÁU ĐẠI DƯƠNG: 500 Bạc + 15 Vàng + Trọn bộ Đạo cụ!'
+      'item': 'OCEAN CHEST: 500 Silver + 15 Gold + All Boosters!'
     },
   ];
 
@@ -73,7 +73,7 @@ class _DailyRewardDialogState extends State<DailyRewardDialog> {
                 borderRadius: BorderRadius.circular(12),
               ),
               child: const Text(
-                'Điểm danh mỗi ngày để nhận kho báu đại dương!',
+                'Check in every day to claim ocean treasures!',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontFamily: 'BrandonText',
@@ -127,7 +127,7 @@ class _DailyRewardDialogState extends State<DailyRewardDialog> {
                   border: Border.all(color: const Color(0xFF66BB6A), width: 1.8),
                 ),
                 child: const GameStrokedText(
-                  'NHẬN QUÀ THÀNH CÔNG!',
+                  'REWARD CLAIMED!',
                   fontSize: 13,
                   strokeColor: Color(0xFF1B5E20),
                   strokeWidth: 3.2,

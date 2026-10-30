@@ -160,7 +160,7 @@ class _GameBoardState extends State<GameBoard> {
                                 borderRadius: BorderRadius.circular(6),
                               ),
                               child: const Text(
-                                'TIẾP THEO 🐾',
+                                'NEXT 🐾',
                                 style: TextStyle(
                                   color: Color(0xFFFFD54F),
                                   fontSize: 8.5,
@@ -186,10 +186,10 @@ class _GameBoardState extends State<GameBoard> {
                             ),
                             child: Text(
                               controller.activeBooster == GameConstants.boosterHammer
-                                  ? '🐚 Chạm vào khối băng để phá tan chỉ trong 1 lần đập!'
+                                  ? '🐚 Tap an ice block to shatter it in 1 hit!'
                                   : (controller.activeBooster == GameConstants.boosterNet
-                                      ? '🏸 Chạm vào bất kỳ con cá nào để vớt thu thập!'
-                                      : '⭐ Chạm vào khối cá để biến đổi!'),
+                                      ? '🏸 Tap any fish block to scoop it up!'
+                                      : '⭐ Tap a fish block to transform it!'),
                               textAlign: TextAlign.center,
                               style: const TextStyle(
                                 color: Colors.white,

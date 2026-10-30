@@ -66,7 +66,7 @@ class ExitGameDialog extends StatelessWidget {
               border: Border.all(color: const Color(0xFF81CBE0), width: 1.8),
             ),
             child: const Text(
-              'Bạn có chắc muốn rời bể cá và thoát trò chơi không?',
+              'Are you sure you want to leave the aquarium and exit the game?',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontFamily: 'BrandonText',

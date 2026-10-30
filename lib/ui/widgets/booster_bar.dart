@@ -53,7 +53,7 @@ class BoosterBar extends StatelessWidget {
     showDialog(
       context: context,
       builder: (ctx) => GamePopupFrame(
-        title: 'MUA ${label.toUpperCase()}',
+        title: 'BUY ${label.toUpperCase()}',
         bannerPalette: GameButtonPalette.orange,
         maxWidth: 335,
         onClose: () => Navigator.pop(ctx),
@@ -130,7 +130,7 @@ class BoosterBar extends StatelessWidget {
               child: Column(
                 children: [
                   GameStrokedText(
-                    'HẾT ${label.toUpperCase()}!',
+                    'OUT OF ${label.toUpperCase()}!',
                     fontSize: 15.5,
                     fillColor: const Color(0xFFFFF59D),
                     strokeColor: const Color(0xFF134E5E),
@@ -139,8 +139,8 @@ class BoosterBar extends StatelessWidget {
                   const SizedBox(height: 5),
                   Text(
                     canAfford
-                        ? 'Mua ngay 1 $label để tiếp tục giải cứu bể cá?'
-                        : 'Bạn cần $goldCost Cá Vàng để mua $label. Ghé Cửa Hàng đổi thêm nhé!',
+                        ? 'Buy 1 $label now to keep rescuing the aquarium?'
+                        : 'You need $goldCost Gold Fish to buy a $label. Visit the Shop for more!',
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                       fontFamily: 'BrandonText',
@@ -175,7 +175,7 @@ class BoosterBar extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     const GameStrokedText(
-                      'MUA NGAY',
+                      'BUY NOW',
                       fontSize: 16.5,
                       strokeColor: Color(0xFF214D10),
                       strokeWidth: 4.2,
@@ -215,7 +215,7 @@ class BoosterBar extends StatelessWidget {
               )
             else
               Game3DButton(
-                label: 'ĐẾN CỬA HÀNG',
+                label: 'OPEN SHOP',
                 icon: Icons.storefront_rounded,
                 palette: GameButtonPalette.gold,
                 height: 52,
@@ -229,7 +229,7 @@ class BoosterBar extends StatelessWidget {
 
             // Secondary Dismiss Button
             Game3DButton(
-              label: 'ĐỂ SAU',
+              label: 'LATER',
               palette: GameButtonPalette.slate,
               height: 42,
               fontSize: 14.5,
@@ -253,12 +253,12 @@ class BoosterBar extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              // 3. Hammer (Búa ốc xà cừ - Phá băng 1 hit)
+              // 3. Hammer (Shell Hammer - Breaks ice in 1 hit)
               _buildBoosterItem(
                 context,
                 type: GameConstants.boosterHammer,
                 imageAsset: 'assets/images/sprites/boosters/booster_hammer.png',
-                label: 'Búa',
+                label: 'Hammer',
                 count: playerData.getBoosterCount('hammer'),
                 isSelected: controller.activeBooster == GameConstants.boosterHammer,
                 onTap: () => _onBoosterTapped(
@@ -266,17 +266,17 @@ class BoosterBar extends StatelessWidget {
                   playerData: playerData,
                   boosterKey: 'hammer',
                   boosterType: GameConstants.boosterHammer,
-                  label: 'Búa',
+                  label: 'Hammer',
                   imageAsset: 'assets/images/sprites/boosters/booster_hammer.png',
                 ),
               ),
 
-              // 4. Wand (Đũa sao biển - Biến đổi các con cá cho thông thoáng)
+              // 4. Wand (Starfish Wand - Splits large fish into 1-cell fish)
               _buildBoosterItem(
                 context,
                 type: GameConstants.boosterWand,
                 imageAsset: 'assets/images/sprites/boosters/booster_magic_wand.png',
-                label: 'Đũa thần',
+                label: 'Wand',
                 count: playerData.getBoosterCount('wand'),
                 isSelected: false,
                 onTap: () => _onBoosterTapped(
@@ -284,17 +284,17 @@ class BoosterBar extends StatelessWidget {
                   playerData: playerData,
                   boosterKey: 'wand',
                   boosterType: GameConstants.boosterWand,
-                  label: 'Đũa thần',
+                  label: 'Wand',
                   imageAsset: 'assets/images/sprites/boosters/booster_magic_wand.png',
                 ),
               ),
 
-              // 5. Net (Vợt bắt cá - Thu thập dần các con cá để thông thoáng)
+              // 5. Net (Scoop Net - Collects any targeted fish)
               _buildBoosterItem(
                 context,
                 type: GameConstants.boosterNet,
                 imageAsset: 'assets/images/sprites/boosters/booster_magnet.png',
-                label: 'Vợt',
+                label: 'Net',
                 count: playerData.getBoosterCount('net'),
                 isSelected: controller.activeBooster == GameConstants.boosterNet,
                 onTap: () => _onBoosterTapped(
@@ -302,7 +302,7 @@ class BoosterBar extends StatelessWidget {
                   playerData: playerData,
                   boosterKey: 'net',
                   boosterType: GameConstants.boosterNet,
-                  label: 'Vợt',
+                  label: 'Net',
                   imageAsset: 'assets/images/sprites/boosters/booster_magnet.png',
                 ),
               ),

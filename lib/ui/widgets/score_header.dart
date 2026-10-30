@@ -131,7 +131,7 @@ class ScoreHeader extends StatelessWidget {
                                 ),
                               ),
                               Text(
-                                'Bộ sưu tập',
+                                'My Cats',
                                 style: TextStyle(
                                   fontFamily: 'BrandonText',
                                   fontSize: 10,

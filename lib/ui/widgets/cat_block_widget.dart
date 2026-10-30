@@ -62,7 +62,7 @@ class _CatBlockWidgetState extends State<CatBlockWidget> {
           if (widget.isPreview || block.row < 0) return;
           if (widget.controller.isBusy || widget.controller.activeBooster != null) return;
           if (block.type == BlockType.sealed) {
-            widget.controller.setMascotQuote('Chú mèo này đang bị xích, không thể trượt meow!');
+            widget.controller.setMascotQuote('This fish is tangled in seaweed and cannot slide, meow!');
             return;
           }
           setState(() {

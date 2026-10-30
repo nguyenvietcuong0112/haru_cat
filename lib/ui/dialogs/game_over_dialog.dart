@@ -25,12 +25,12 @@ class GameOverDialog extends StatelessWidget {
   });
 
   static const List<String> funFacts = [
-    'Mẹo: Quan sát hàng cá chuẩn bị ở đáy trước khi trượt!',
-    'Mẹo: Ưu tiên dọn các chú cá lớn 3-4 ô để bể luôn thông thoáng!',
-    'Mẹo: Xóa hàng liên hoàn từ trên xuống để nhân điểm Combo cực lớn!',
-    'Mẹo: Búa Ốc có thể đập vỡ tảng băng chỉ trong 1 lần duy nhất!',
-    'Mẹo: Thu thập hộp quà trong hàng để nhận Vàng, Bạc và Đạo cụ miễn phí!',
-    'Mẹo: Đừng để cá Bom đếm ngược về 0 nếu không muốn bị thả thêm cá cản trở!',
+    'Tip: Check the preview row at the bottom before sliding!',
+    'Tip: Clear large 3-4 cell fish early to keep the tank open!',
+    'Tip: Chain top-to-bottom row clears for massive Combo multipliers!',
+    'Tip: The Shell Hammer shatters any ice block in a single hit!',
+    'Tip: Clear Gift Boxes in a row to win free Gold, Silver & Boosters!',
+    'Tip: Clear Bomb fish before their countdown reaches 0!',
   ];
 
   final String randomFact = funFacts[Random().nextInt(funFacts.length)];
@@ -111,7 +111,7 @@ class GameOverDialog extends StatelessWidget {
                         border: Border.all(color: Colors.white, width: 1.5),
                       ),
                       child: const GameStrokedText(
-                        '★ NEW BEST! ★',
+                        'NEW BEST!',
                         fontSize: 11.5,
                         strokeColor: Color(0xFF682C00),
                         strokeWidth: 3.0,

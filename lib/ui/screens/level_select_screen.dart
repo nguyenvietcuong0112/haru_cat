@@ -81,7 +81,7 @@ class _LevelSelectScreenState extends State<LevelSelectScreen>
                       ),
                       const Expanded(
                         child: Text(
-                          'CHỌN MÀN CHƠI',
+                          'SELECT LEVEL',
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontSize: 22,
@@ -115,9 +115,9 @@ class _LevelSelectScreenState extends State<LevelSelectScreen>
                     unselectedLabelColor: const Color(0xFF006064),
                     labelStyle: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14),
                     tabs: const [
-                      Tab(text: 'DỄ (30)'),
-                      Tab(text: 'VỪA (30)'),
-                      Tab(text: 'KHÓ (40)'),
+                      Tab(text: 'EASY (30)'),
+                      Tab(text: 'MEDIUM (30)'),
+                      Tab(text: 'HARD (40)'),
                     ],
                   ),
                 ),

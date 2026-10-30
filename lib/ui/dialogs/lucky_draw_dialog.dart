@@ -23,14 +23,14 @@ class _LuckyDrawDialogState extends State<LuckyDrawDialog>
   String? _wonReward;
 
   final List<Map<String, dynamic>> _prizes = [
-    {'label': '100 Bạc', 'type': 'silver', 'amount': 100, 'color': const Color(0xFF4DD0E1)},
-    {'label': '5 Vàng', 'type': 'gold', 'amount': 5, 'color': const Color(0xFFFFCA28)},
-    {'label': '1 Búa', 'type': 'hammer', 'amount': 1, 'color': const Color(0xFF81D4FA)},
-    {'label': '250 Bạc', 'type': 'silver', 'amount': 250, 'color': const Color(0xFF80CBC4)},
-    {'label': '10 Vàng', 'type': 'gold', 'amount': 10, 'color': const Color(0xFFFFB74D)},
-    {'label': '1 Vợt', 'type': 'net', 'amount': 1, 'color': const Color(0xFF90CAF9)},
-    {'label': '1 Đũa', 'type': 'wand', 'amount': 1, 'color': const Color(0xFF4DB6AC)},
-    {'label': '20 Vàng', 'type': 'gold', 'amount': 20, 'color': const Color(0xFFFF8A65)},
+    {'label': '100 SILVER', 'type': 'silver', 'amount': 100, 'color': const Color(0xFF4DD0E1)},
+    {'label': '5 GOLD', 'type': 'gold', 'amount': 5, 'color': const Color(0xFFFFCA28)},
+    {'label': '1 HAMMER', 'type': 'hammer', 'amount': 1, 'color': const Color(0xFF81D4FA)},
+    {'label': '250 SILVER', 'type': 'silver', 'amount': 250, 'color': const Color(0xFF80CBC4)},
+    {'label': '10 GOLD', 'type': 'gold', 'amount': 10, 'color': const Color(0xFFFFB74D)},
+    {'label': '1 NET', 'type': 'net', 'amount': 1, 'color': const Color(0xFF90CAF9)},
+    {'label': '1 WAND', 'type': 'wand', 'amount': 1, 'color': const Color(0xFF4DB6AC)},
+    {'label': '20 GOLD', 'type': 'gold', 'amount': 20, 'color': const Color(0xFFFF8A65)},
   ];
 
   @override
@@ -198,7 +198,7 @@ class _LuckyDrawDialogState extends State<LuckyDrawDialog>
                 border: Border.all(color: const Color(0xFFFF8F00), width: 2),
               ),
               child: GameStrokedText(
-                'CHÚC MỪNG: $_wonReward',
+                'YOU WON: $_wonReward',
                 fontSize: 15,
                 strokeColor: const Color(0xFF682C00),
                 strokeWidth: 3.5,
@@ -222,7 +222,7 @@ class _LuckyDrawDialogState extends State<LuckyDrawDialog>
           if (!canFree && remaining > Duration.zero) ...[
             const SizedBox(height: 8),
             Text(
-              'Lượt miễn phí sau: ${remaining.inMinutes}p ${remaining.inSeconds % 60}s',
+              'Next free spin in: ${remaining.inMinutes}m ${remaining.inSeconds % 60}s',
               style: const TextStyle(
                 fontFamily: 'BrandonText',
                 fontSize: 11.5,

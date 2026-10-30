@@ -204,7 +204,7 @@ class _CharacterSelectDialogState extends State<CharacterSelectDialog> {
                                     borderRadius: BorderRadius.circular(14),
                                   ),
                                   content: const Text(
-                                    'Không đủ Vàng! Hãy ghé Shop để đổi thêm.',
+                                    'Not enough Gold! Visit the Shop to get more.',
                                     style: TextStyle(
                                       fontFamily: 'BrandonText',
                                       fontWeight: FontWeight.bold,
