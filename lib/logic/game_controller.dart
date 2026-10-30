@@ -300,6 +300,56 @@ class GameController extends ChangeNotifier {
     return maxCol;
   }
 
+  /// Checks if any block on the active board (row >= 0) has at least 1 legal slide move.
+  bool hasValidMoves() {
+    if (_blocks.isEmpty) return false;
+    for (final b in _blocks) {
+      if (canBlockMove(b)) return true;
+    }
+    return false;
+  }
+
+  /// Checks if a specific block can slide at least 1 cell to the left or right.
+  bool canBlockMove(CatBlock block) {
+    if (block.row < 0) return false; // Row -1 is preview row, cannot be moved directly
+    if (block.type == BlockType.sealed) return false; // Sealed blocks cannot be slid
+    final minCol = getMinSlideCol(block);
+    final maxCol = getMaxSlideCol(block);
+    return minCol < block.col || maxCol > block.col;
+  }
+
+  /// Automatically pushes up the prepared row from the bottom if no blocks on the board can move
+  Future<void> _ensureBoardHasValidMoves() async {
+    if (mode != GameMode.endless || _isGameOver || _isContinuePrompting) return;
+
+    int safetyCounter = 0;
+    while (!_isGameOver && !_isContinuePrompting && !hasValidMoves() && safetyCounter < 10) {
+      safetyCounter++;
+      _mascotQuote = 'Không còn nước đi khả dụng! Đang đẩy hàng chuẩn bị lên...';
+      notifyListeners();
+
+      await Future.delayed(const Duration(milliseconds: 260));
+      await _pushNewRow();
+      await _resolvePhysicsAndLines();
+
+      _checkLevelWinOrLoss();
+    }
+  }
+
+  /// Public method callable by UI / Flame engine when board deadlock is detected
+  Future<void> checkAndPushIfNoMoves() async {
+    if (mode != GameMode.endless || _isBusy || _isGameOver || _isContinuePrompting) return;
+    if (!hasValidMoves()) {
+      _isBusy = true;
+      try {
+        await _ensureBoardHasValidMoves();
+      } finally {
+        _isBusy = false;
+        notifyListeners();
+      }
+    }
+  }
+
   void setMascotQuote(String quote) {
     _mascotQuote = quote;
     notifyListeners();
@@ -324,84 +374,89 @@ class GameController extends ChangeNotifier {
     }
 
     _isBusy = true;
-    block.col = clampedCol;
-    _moves++;
-    _audio.playDrop();
+    try {
+      block.col = clampedCol;
+      _moves++;
+      _audio.playDrop();
 
-    // Check bomb countdowns
-    final autoExplodedBombs = <CatBlock>[];
-    for (final b in _blocks) {
-      if (b.type == BlockType.bomb) {
-        b.bombCountdown--;
-        if (b.bombCountdown <= 0) {
-          autoExplodedBombs.add(b);
+      // Check bomb countdowns
+      final autoExplodedBombs = <CatBlock>[];
+      for (final b in _blocks) {
+        if (b.type == BlockType.bomb) {
+          b.bombCountdown--;
+          if (b.bombCountdown <= 0) {
+            autoExplodedBombs.add(b);
+          }
         }
       }
-    }
 
-    if (autoExplodedBombs.isNotEmpty) {
-      _audio.playClear();
-      int totalPenaltySpawned = 0;
+      if (autoExplodedBombs.isNotEmpty) {
+        _audio.playClear();
+        int totalPenaltySpawned = 0;
 
-      for (final eb in autoExplodedBombs) {
-        // Remove the bomb itself
-        _blocks.remove(eb);
+        for (final eb in autoExplodedBombs) {
+          // Remove the bomb itself
+          _blocks.remove(eb);
 
-        // Penalty: Spawn 2 extra fish blocks into empty cells
-        final emptyCells = <Point<int>>[];
-        for (int r = 0; r < GameConstants.maxVisibleRows - 1; r++) {
-          for (int c = 0; c < GameConstants.boardCols; c++) {
-            if (isCellEmpty(c, r)) {
-              emptyCells.add(Point(c, r));
+          // Penalty: Spawn 2 extra fish blocks into empty cells
+          final emptyCells = <Point<int>>[];
+          for (int r = 0; r < GameConstants.maxVisibleRows - 1; r++) {
+            for (int c = 0; c < GameConstants.boardCols; c++) {
+              if (isCellEmpty(c, r)) {
+                emptyCells.add(Point(c, r));
+              }
+            }
+          }
+          emptyCells.shuffle(_random);
+          int spawned = 0;
+          for (final pt in emptyCells) {
+            if (spawned >= 2) break;
+            if (isCellEmpty(pt.x, pt.y)) {
+              _blocks.add(CatBlock(
+                id: 'penalty_${DateTime.now().microsecondsSinceEpoch}_${pt.x}_${pt.y}',
+                col: pt.x,
+                row: pt.y,
+                width: 1,
+                type: BlockType.cat1,
+                variant: _random.nextInt(2),
+              ));
+              spawned++;
+              totalPenaltySpawned++;
             }
           }
         }
-        emptyCells.shuffle(_random);
-        int spawned = 0;
-        for (final pt in emptyCells) {
-          if (spawned >= 2) break;
-          if (isCellEmpty(pt.x, pt.y)) {
-            _blocks.add(CatBlock(
-              id: 'penalty_${DateTime.now().microsecondsSinceEpoch}_${pt.x}_${pt.y}',
-              col: pt.x,
-              row: pt.y,
-              width: 1,
-              type: BlockType.cat1,
-              variant: _random.nextInt(2),
-            ));
-            spawned++;
-            totalPenaltySpawned++;
+        _mascotQuote = 'BÙM! Bom phát nổ làm rơi thêm $totalPenaltySpawned cá cản trở!';
+      }
+
+      notifyListeners();
+
+      // Allow user to clearly see block slide smoothly into target position before gravity or line evaluation
+      await Future.delayed(const Duration(milliseconds: 220));
+
+      // Run gravity & match loop
+      await _resolvePhysicsAndLines();
+
+      if (!_isGameOver && !_isLevelCompleted && !_isContinuePrompting) {
+        if (mode == GameMode.endless) {
+          if (_frozenTurns > 0) {
+            _frozenTurns--;
+            _mascotQuote = 'Magician frost hold! Row push paused!';
+          } else {
+            await Future.delayed(const Duration(milliseconds: 220));
+            await _pushNewRow();
+            await _resolvePhysicsAndLines();
           }
+
+          // Auto-detect deadlock / no valid moves and push prepared row up
+          await _ensureBoardHasValidMoves();
         }
+
+        _checkLevelWinOrLoss();
       }
-      _mascotQuote = 'BÙM! Bom phát nổ làm rơi thêm $totalPenaltySpawned cá cản trở!';
+    } finally {
+      _isBusy = false;
+      notifyListeners();
     }
-
-    notifyListeners();
-
-    // Allow user to clearly see block slide smoothly into target position before gravity or line evaluation
-    await Future.delayed(const Duration(milliseconds: 220));
-
-    // Run gravity & match loop
-    await _resolvePhysicsAndLines();
-
-    if (!_isGameOver && !_isLevelCompleted && !_isContinuePrompting) {
-      if (mode == GameMode.endless) {
-        if (_frozenTurns > 0) {
-          _frozenTurns--;
-          _mascotQuote = 'Magician frost hold! Row push paused!';
-        } else {
-          await Future.delayed(const Duration(milliseconds: 220));
-          await _pushNewRow();
-          await _resolvePhysicsAndLines();
-        }
-      }
-
-      _checkLevelWinOrLoss();
-    }
-
-    _isBusy = false;
-    notifyListeners();
   }
 
   Future<bool> _resolvePhysicsAndLines() async {
@@ -732,6 +787,10 @@ class GameController extends ChangeNotifier {
 
     await Future.delayed(const Duration(milliseconds: 200));
     await _resolvePhysicsAndLines();
+
+    if (mode == GameMode.endless) {
+      await _ensureBoardHasValidMoves();
+    }
     notifyListeners();
   }
 
@@ -854,38 +913,58 @@ class GameController extends ChangeNotifier {
 
       if (_playerData.useBooster('hammer')) {
         _activeBooster = null;
+        _isBusy = true;
         _audio.playIceBreak();
 
-        // 1. Hammer: Breaks ice in 1 single hit ("Phá băng, chỉ cần phá 1 lần")
-        if (block.type == BlockType.ice) {
-          _blocks.remove(block);
-          _mascotQuote = 'Búa ốc xà cừ đã phá tan tảng băng chỉ với 1 lần đập!';
-        } else if (block.type == BlockType.sealed) {
-          _blocks.remove(block);
-          _mascotQuote = 'Búa ốc xà cừ đã phá vỡ xiềng xích!';
-        } else {
-          _blocks.remove(block);
-          _mascotQuote = 'Búa ốc xà cừ đã đập vỡ khối cá!';
-        }
+        try {
+          // 1. Hammer: Breaks ice in 1 single hit ("Phá băng, chỉ cần phá 1 lần")
+          if (block.type == BlockType.ice) {
+            _blocks.remove(block);
+            _mascotQuote = 'Búa ốc xà cừ đã phá tan tảng băng chỉ với 1 lần đập!';
+          } else if (block.type == BlockType.sealed) {
+            _blocks.remove(block);
+            _mascotQuote = 'Búa ốc xà cừ đã phá vỡ xiềng xích!';
+          } else {
+            _blocks.remove(block);
+            _mascotQuote = 'Búa ốc xà cừ đã đập vỡ khối cá!';
+          }
 
-        notifyListeners();
-        await Future.delayed(const Duration(milliseconds: 160));
-        await _applyGravity();
-        await _resolvePhysicsAndLines();
+          notifyListeners();
+          await Future.delayed(const Duration(milliseconds: 160));
+          await _applyGravity();
+          await _resolvePhysicsAndLines();
+
+          if (mode == GameMode.endless) {
+            await _ensureBoardHasValidMoves();
+          }
+        } finally {
+          _isBusy = false;
+          notifyListeners();
+        }
       }
     } else if (_activeBooster == GameConstants.boosterNet || _activeBooster == 'magnet') {
       if (_playerData.useBooster('net')) {
         _activeBooster = null;
+        _isBusy = true;
         _audio.playDrop();
 
-        // 3. Net: Scoop/collect target fish to clear space ("Thu thập dần các con cá để cho thông thoáng")
-        _blocks.remove(block);
-        _mascotQuote = 'Chiếc vợt đã thu thập chú cá, bàn cờ thông thoáng hơn rồi!';
+        try {
+          // 3. Net: Scoop/collect target fish to clear space ("Thu thập dần các con cá để cho thông thoáng")
+          _blocks.remove(block);
+          _mascotQuote = 'Chiếc vợt đã thu thập chú cá, bàn cờ thông thoáng hơn rồi!';
 
-        notifyListeners();
-        await Future.delayed(const Duration(milliseconds: 160));
-        await _applyGravity();
-        await _resolvePhysicsAndLines();
+          notifyListeners();
+          await Future.delayed(const Duration(milliseconds: 160));
+          await _applyGravity();
+          await _resolvePhysicsAndLines();
+
+          if (mode == GameMode.endless) {
+            await _ensureBoardHasValidMoves();
+          }
+        } finally {
+          _isBusy = false;
+          notifyListeners();
+        }
       }
     } else if (_activeBooster == GameConstants.boosterWand) {
       // 2. Wand targeted fallback: transforms selected block into 1-cell fish
@@ -897,26 +976,36 @@ class GameController extends ChangeNotifier {
 
       if (_playerData.useBooster('wand')) {
         _activeBooster = null;
+        _isBusy = true;
         _audio.playLightning();
 
-        _blocks.remove(block);
-        for (int i = 0; i < block.width; i++) {
-          _blocks.add(CatBlock(
-            id: 'wand_${DateTime.now().microsecondsSinceEpoch}_${block.col + i}_${block.row}',
-            col: block.col + i,
-            row: block.row,
-            width: 1,
-            type: block.type,
-            variant: _random.nextInt(2),
-          ));
+        try {
+          _blocks.remove(block);
+          for (int i = 0; i < block.width; i++) {
+            _blocks.add(CatBlock(
+              id: 'wand_${DateTime.now().microsecondsSinceEpoch}_${block.col + i}_${block.row}',
+              col: block.col + i,
+              row: block.row,
+              width: 1,
+              type: block.type,
+              variant: _random.nextInt(2),
+            ));
+          }
+
+          _mascotQuote = 'Đũa sao biển đã biến đổi cá lớn thành các chú cá nhỏ!';
+          notifyListeners();
+
+          await Future.delayed(const Duration(milliseconds: 160));
+          await _applyGravity();
+          await _resolvePhysicsAndLines();
+
+          if (mode == GameMode.endless) {
+            await _ensureBoardHasValidMoves();
+          }
+        } finally {
+          _isBusy = false;
+          notifyListeners();
         }
-
-        _mascotQuote = 'Đũa sao biển đã biến đổi cá lớn thành các chú cá nhỏ!';
-        notifyListeners();
-
-        await Future.delayed(const Duration(milliseconds: 160));
-        await _applyGravity();
-        await _resolvePhysicsAndLines();
       }
     }
   }
@@ -938,39 +1027,45 @@ class GameController extends ChangeNotifier {
       _activeBooster = null;
       notifyListeners();
 
-      if (largeBlocks.isNotEmpty) {
-        // Transform all large fish into 1-cell fish
-        for (final b in largeBlocks) {
-          _blocks.remove(b);
-          for (int i = 0; i < b.width; i++) {
-            _blocks.add(CatBlock(
-              id: 'wand_${DateTime.now().microsecondsSinceEpoch}_${b.col + i}_${b.row}',
-              col: b.col + i,
-              row: b.row,
-              width: 1,
-              type: b.type,
-              variant: _random.nextInt(2),
-            ));
+      try {
+        if (largeBlocks.isNotEmpty) {
+          // Transform all large fish into 1-cell fish
+          for (final b in largeBlocks) {
+            _blocks.remove(b);
+            for (int i = 0; i < b.width; i++) {
+              _blocks.add(CatBlock(
+                id: 'wand_${DateTime.now().microsecondsSinceEpoch}_${b.col + i}_${b.row}',
+                col: b.col + i,
+                row: b.row,
+                width: 1,
+                type: b.type,
+                variant: _random.nextInt(2),
+              ));
+            }
           }
+          _mascotQuote = 'Đũa sao biển đã biến đổi toàn bộ cá lớn thành cá nhỏ cho thông thoáng!';
+        } else {
+          // All fish are 1-cell: shuffle them to clear rows
+          final cols = List.generate(GameConstants.boardCols, (i) => i)..shuffle(_random);
+          for (int i = 0; i < _blocks.length; i++) {
+            _blocks[i].col = cols[i % cols.length];
+          }
+          _mascotQuote = 'Đũa sao biển đã hoán đổi vị trí các con cá cho thông thoáng!';
         }
-        _mascotQuote = 'Đũa sao biển đã biến đổi toàn bộ cá lớn thành cá nhỏ cho thông thoáng!';
-      } else {
-        // All fish are 1-cell: shuffle them to clear rows
-        final cols = List.generate(GameConstants.boardCols, (i) => i)..shuffle(_random);
-        for (int i = 0; i < _blocks.length; i++) {
-          _blocks[i].col = cols[i % cols.length];
+
+        notifyListeners();
+        await Future.delayed(const Duration(milliseconds: 200));
+
+        await _applyGravity();
+        await _resolvePhysicsAndLines();
+
+        if (mode == GameMode.endless) {
+          await _ensureBoardHasValidMoves();
         }
-        _mascotQuote = 'Đũa sao biển đã hoán đổi vị trí các con cá cho thông thoáng!';
+      } finally {
+        _isBusy = false;
+        notifyListeners();
       }
-
-      notifyListeners();
-      await Future.delayed(const Duration(milliseconds: 200));
-
-      await _applyGravity();
-      await _resolvePhysicsAndLines();
-
-      _isBusy = false;
-      notifyListeners();
     }
   }
 

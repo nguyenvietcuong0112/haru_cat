@@ -103,7 +103,7 @@ class HaruSlideGame extends FlameGame with DragCallbacks, TapCallbacks {
   void update(double dt) {
     super.update(dt);
 
-    // GPU Camera Viewfinder shake - zero Flutter tree rebuilds
+    // 1. GPU Camera Viewfinder shake - zero Flutter tree rebuilds
     if (_shakeTimer > 0) {
       _shakeTimer -= dt;
       final progress = (_shakeTimer / _shakeDuration).clamp(0.0, 1.0);
@@ -114,6 +114,15 @@ class HaruSlideGame extends FlameGame with DragCallbacks, TapCallbacks {
       if (_shakeTimer <= 0) {
         camera.viewfinder.position = Vector2.zero();
       }
+    }
+
+    // 2. Auto-detect deadlock / no moves available on active board -> trigger row push
+    if (!controller.isBusy &&
+        !controller.isGameOver &&
+        !controller.isContinuePrompting &&
+        controller.mode == GameMode.endless &&
+        !controller.hasValidMoves()) {
+      controller.checkAndPushIfNoMoves();
     }
   }
 
@@ -187,7 +196,10 @@ class HaruSlideGame extends FlameGame with DragCallbacks, TapCallbacks {
         final comp = _activeComponents[block.id]!;
         comp.syncState();
       } else if (_previewComponents.containsKey(block.id)) {
+        // Was preview, promoted to active board block (row pushed up!)
         final comp = _previewComponents.remove(block.id)!;
+        comp.isPreview = false;
+        comp.priority = 20;
         _activeComponents[block.id] = comp;
         comp.syncState();
       } else {

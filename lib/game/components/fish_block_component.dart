@@ -9,7 +9,7 @@ import '../haru_slide_game.dart';
 class FishBlockComponent extends PositionComponent
     with DragCallbacks, TapCallbacks, HasGameReference<HaruSlideGame> {
   final CatBlock block;
-  final bool isPreview;
+  bool isPreview;
 
   // Visual state
   double visualX = 0.0;
@@ -78,8 +78,14 @@ class FishBlockComponent extends PositionComponent
   }
 
   void syncState() {
+    // Dynamic preview update: if block row >= 0, it is an active block on the board
+    isPreview = block.row < 0;
     targetX = block.col * game.cellSize;
     targetY = game.rowToY(block.row);
+
+    if (!isDragging) {
+      dragOffset = 0.0;
+    }
 
     if (block.isFalling && velocityY <= 0) {
       velocityY = 80.0;
@@ -305,6 +311,7 @@ class FishBlockComponent extends PositionComponent
   void onDragStart(DragStartEvent event) {
     super.onDragStart(event);
 
+    // Row < 0 is preview row, cannot be dragged
     if (isPreview || block.row < 0) return;
     if (game.controller.isBusy || game.controller.activeBooster != null) return;
 
@@ -314,16 +321,23 @@ class FishBlockComponent extends PositionComponent
       return;
     }
 
+    minSlideCol = game.controller.getMinSlideCol(block);
+    maxSlideCol = game.controller.getMaxSlideCol(block);
+
+    // If block has no room to slide left or right
+    if (minSlideCol == block.col && maxSlideCol == block.col) {
+      squishVelX = 35.0; // Wiggle feedback showing it is jammed
+      game.controller.setMascotQuote('Chú cá này đang bị kẹp, không thể trượt meow!');
+      game.controller.checkAndPushIfNoMoves();
+      return;
+    }
+
     isDragging = true;
     dragOffset = 0.0;
     _lastGhostCol = -1;
     _lastGhostRow = -1;
 
-    minSlideCol = game.controller.getMinSlideCol(block);
-    maxSlideCol = game.controller.getMaxSlideCol(block);
-
     priority = 100;
-
     squishX = 1.08;
     squishY = 0.94;
 
@@ -360,6 +374,7 @@ class FishBlockComponent extends PositionComponent
   void _finalizeDrag() {
     if (!isDragging) return;
     isDragging = false;
+    dragOffset = 0.0;
     priority = 0;
 
     game.ghostIndicator.hide();
@@ -377,7 +392,6 @@ class FishBlockComponent extends PositionComponent
   void _updateGhostIndicator() {
     final candidateCol = (visualX / game.cellSize).round().clamp(minSlideCol, maxSlideCol);
 
-    // Skip recalculation if candidate col hasn't shifted
     if (candidateCol == _lastGhostCol && block.row == _lastGhostRow) {
       return;
     }

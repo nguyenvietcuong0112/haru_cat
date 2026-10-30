@@ -409,6 +409,54 @@ void main() {
       expect(controller.blocks.contains(ice), isFalse, reason: 'Ice block must be shattered');
       expect(player.getBoosterCount('hammer'), equals(initialHammers - 1), reason: 'Hammer consumed');
     });
+
+    test('Deadlock detection: hasValidMoves detects whether any block can slide', () {
+      final controller = GameController(mode: GameMode.endless);
+      controller.blocks.clear();
+
+      // Empty board: no valid moves
+      expect(controller.hasValidMoves(), isFalse);
+
+      // Add a block that can slide
+      final movable = CatBlock(id: 'mv', col: 2, row: 0, width: 2, type: BlockType.cat1);
+      controller.blocks.add(movable);
+      expect(controller.hasValidMoves(), isTrue);
+
+      // Sealed block cannot slide
+      controller.blocks.clear();
+      final sealed = CatBlock(id: 'sealed', col: 0, row: 0, width: 2, type: BlockType.sealed);
+      controller.blocks.add(sealed);
+      expect(controller.hasValidMoves(), isFalse);
+
+      // Block pinned between walls / other blocks cannot slide
+      controller.blocks.clear();
+      final b1 = CatBlock(id: 'b1', col: 0, row: 0, width: 4, type: BlockType.cat1);
+      final b2 = CatBlock(id: 'b2', col: 4, row: 0, width: 3, type: BlockType.sealed); // sealed at right end
+      controller.blocks.addAll([b1, b2]);
+      // b1 is at col 0, right neighbor is col 4 (b2), so b1 cannot move! b2 is sealed, so b2 cannot move!
+      expect(controller.hasValidMoves(), isFalse);
+    });
+
+    test('Auto push prepared row when board has no valid moves', () async {
+      final controller = GameController(mode: GameMode.endless);
+      controller.blocks.clear();
+
+      // Set up a prepared preview row
+      controller.nextRowBlocks.clear();
+      final preparedFish = CatBlock(id: 'prep', col: 1, row: -1, width: 2, type: BlockType.cat1);
+      controller.nextRowBlocks.add(preparedFish);
+
+      // Board has 0 moves
+      expect(controller.hasValidMoves(), isFalse);
+
+      // Trigger auto push
+      await controller.checkAndPushIfNoMoves();
+
+      // The prepared row must have been pushed up onto row 0!
+      expect(controller.blocks.contains(preparedFish), isTrue);
+      expect(preparedFish.row, equals(0));
+      expect(controller.hasValidMoves(), isTrue);
+    });
   });
 }
 
