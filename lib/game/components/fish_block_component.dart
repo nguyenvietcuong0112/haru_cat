@@ -366,7 +366,7 @@ class FishBlockComponent extends PositionComponent
     if (game.controller.isBusy || game.controller.activeBooster != null) return;
 
     if (block.type == BlockType.sealed) {
-      game.controller.setMascotQuote('Chú cá này đang bị quấn rong biển, không thể trượt meow!');
+      game.controller.setMascotQuote('This fish is tangled in seaweed and cannot slide, meow!');
       squishVelX = 40.0;
       return;
     }
@@ -377,7 +377,7 @@ class FishBlockComponent extends PositionComponent
     // If block has no room to slide left or right
     if (minSlideCol == block.col && maxSlideCol == block.col) {
       squishVelX = 35.0; // Wiggle feedback showing it is jammed
-      game.controller.setMascotQuote('Chú cá này đang bị kẹp, không thể trượt meow!');
+      game.controller.setMascotQuote('This fish is blocked on both sides and cannot slide, meow!');
       game.controller.checkAndPushIfNoMoves();
       return;
     }

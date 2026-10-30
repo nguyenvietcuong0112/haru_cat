@@ -341,7 +341,7 @@ class GameController extends ChangeNotifier {
     int safetyCounter = 0;
     while (!_isGameOver && !_isContinuePrompting && !hasValidMoves() && safetyCounter < 10) {
       safetyCounter++;
-      _mascotQuote = 'Không còn nước đi khả dụng! Đang đẩy hàng chuẩn bị lên...';
+      _mascotQuote = 'No valid moves left! Pushing up the next row...';
       notifyListeners();
 
       await Future.delayed(const Duration(milliseconds: 260));
@@ -375,7 +375,7 @@ class GameController extends ChangeNotifier {
   Future<void> slideBlock(CatBlock block, int targetCol) async {
     if (_isBusy || _isGameOver || _isLevelCompleted || _isContinuePrompting) return;
     if (block.type == BlockType.sealed) {
-      _mascotQuote = 'Chú mèo này đang bị xích, không thể trượt meow!';
+      _mascotQuote = 'This fish is tangled in seaweed and cannot slide, meow!';
       notifyListeners();
       return;
     }
@@ -441,7 +441,7 @@ class GameController extends ChangeNotifier {
             }
           }
         }
-        _mascotQuote = 'BÙM! Bom phát nổ làm rơi thêm $totalPenaltySpawned cá cản trở!';
+        _mascotQuote = 'BOOM! Bomb exploded and spawned $totalPenaltySpawned extra fish!';
       }
 
       notifyListeners();
@@ -625,13 +625,13 @@ class GameController extends ChangeNotifier {
     final newLevel = 1 + (_linesClearedTotal ~/ 8);
     if (newLevel > _inGameLevel) {
       _inGameLevel = newLevel;
-      _mascotQuote = 'CẤP ĐỘ MỚI! Cấp $_inGameLevel (Bạc x${silverMultiplier.toStringAsFixed(1)})!';
+      _mascotQuote = 'LEVEL UP! Level $_inGameLevel (Silver x${silverMultiplier.toStringAsFixed(1)})!';
     } else if (_combo >= 3) {
-      _mascotQuote = 'TUYỆT VỜI! Combo x$_combo!';
+      _mascotQuote = 'AWESOME! Combo x$_combo!';
     } else if (_combo == 2) {
-      _mascotQuote = 'Combo Đôi!';
+      _mascotQuote = 'Double Combo!';
     } else {
-      _mascotQuote = 'Xóa hàng thành công! Cố lên!';
+      _mascotQuote = 'Line cleared! Keep going!';
     }
 
     if (_score > _bestScore) {
@@ -661,14 +661,14 @@ class GameController extends ChangeNotifier {
           b.type = BlockType.cat1;
           brokenObstacles.add(BrokenObstacleInfo(col: b.col, width: b.width, wasIce: false));
           _audio.playIceBreak();
-          _mascotQuote = 'Rong biển đã gỡ! Cá tự do rồi meow!';
+          _mascotQuote = 'Seaweed cleared! The fish is free, meow!';
         } else if (b.type == BlockType.ice) {
           // Clear lần 1: Phá băng! Khối băng vỡ ra thành cá thường
           b.type = BlockType.cat1;
           b.health = 1;
           brokenObstacles.add(BrokenObstacleInfo(col: b.col, width: b.width, wasIce: true));
           _audio.playIceBreak();
-          _mascotQuote = 'Lớp băng đã vỡ! Cá thoát khỏi băng rồi!';
+          _mascotQuote = 'Ice cracked! The fish broke free!';
         } else {
           // Clear lần 2 (hoặc cá thường): Ăn con cá!
           b.isClearing = true;
@@ -689,18 +689,18 @@ class GameController extends ChangeNotifier {
             if (roll == 0) {
               final goldDrop = 1 + _random.nextInt(2); // 1 or 2 Gold
               _playerData.addGoldFish(goldDrop);
-              _mascotQuote = 'Rương kho báu: +$goldDrop Vàng!';
+              _mascotQuote = 'Treasure Chest: +$goldDrop Gold!';
             } else if (roll == 1) {
               final boosterTypes = ['hammer', 'wand', 'magnet'];
               final chosen = boosterTypes[_random.nextInt(boosterTypes.length)];
               _playerData.addBooster(chosen, 1);
-              final bName = chosen == 'hammer' ? 'Búa' : (chosen == 'wand' ? 'Đũa thần' : 'Nam châm');
-              _mascotQuote = 'Rương kho báu: +1 Đạo cụ $bName!';
+              final bName = chosen == 'hammer' ? 'Hammer' : (chosen == 'wand' ? 'Wand' : 'Net');
+              _mascotQuote = 'Treasure Chest: +1 $bName Booster!';
             } else {
               const silverDrop = 25;
               _silverEarned += silverDrop;
               _playerData.addSilverFish(silverDrop);
-              _mascotQuote = 'Rương kho báu: +$silverDrop Bạc!';
+              _mascotQuote = 'Treasure Chest: +$silverDrop Silver!';
             }
             _audio.playBooster();
           } else if (b.type == BlockType.bomb || b.type == BlockType.lightning) {
@@ -955,7 +955,7 @@ class GameController extends ChangeNotifier {
       // Quy tắc GDD: Ice block > block. Ưu tiên phá khối băng trước!
       final hasIce = _blocks.any((b) => b.type == BlockType.ice);
       if (hasIce && block.type != BlockType.ice) {
-        _mascotQuote = 'Búa ưu tiên phá khối băng trước meow! Hãy chọn khối băng!';
+        _mascotQuote = 'Hammer targets Ice blocks first, meow! Tap an Ice block!';
         notifyListeners();
         return;
       }
@@ -969,13 +969,13 @@ class GameController extends ChangeNotifier {
           // 1. Hammer: Breaks ice in 1 single hit ("Phá băng, chỉ cần phá 1 lần")
           if (block.type == BlockType.ice) {
             _blocks.remove(block);
-            _mascotQuote = 'Búa ốc xà cừ đã phá tan tảng băng chỉ với 1 lần đập!';
+            _mascotQuote = 'Shell Hammer shattered the ice block in a single hit!';
           } else if (block.type == BlockType.sealed) {
             _blocks.remove(block);
-            _mascotQuote = 'Búa ốc xà cừ đã phá vỡ xiềng xích!';
+            _mascotQuote = 'Shell Hammer broke the seaweed!';
           } else {
             _blocks.remove(block);
-            _mascotQuote = 'Búa ốc xà cừ đã đập vỡ khối cá!';
+            _mascotQuote = 'Shell Hammer smashed the fish block!';
           }
 
           notifyListeners();
@@ -1000,7 +1000,7 @@ class GameController extends ChangeNotifier {
         try {
           // 3. Net: Scoop/collect target fish to clear space ("Thu thập dần các con cá để cho thông thoáng")
           _blocks.remove(block);
-          _mascotQuote = 'Chiếc vợt đã thu thập chú cá, bàn cờ thông thoáng hơn rồi!';
+          _mascotQuote = 'Scoop Net collected the fish! More room to slide!';
 
           notifyListeners();
           await Future.delayed(const Duration(milliseconds: 160));
@@ -1018,7 +1018,7 @@ class GameController extends ChangeNotifier {
     } else if (_activeBooster == GameConstants.boosterWand) {
       // 2. Wand targeted fallback: transforms selected block into 1-cell fish
       if (block.width < 2) {
-        _mascotQuote = 'Hãy chọn con cá lớn (2-4 ô) để biến đổi thành cá nhỏ 1 ô meow!';
+        _mascotQuote = 'Tap a large fish (2-4 cells) to split into 1-cell fish, meow!';
         notifyListeners();
         return;
       }
@@ -1041,7 +1041,7 @@ class GameController extends ChangeNotifier {
             ));
           }
 
-          _mascotQuote = 'Đũa sao biển đã biến đổi cá lớn thành các chú cá nhỏ!';
+          _mascotQuote = 'Starfish Wand split the large fish into tiny fish!';
           notifyListeners();
 
           await Future.delayed(const Duration(milliseconds: 160));
@@ -1065,7 +1065,7 @@ class GameController extends ChangeNotifier {
 
     final largeBlocks = _blocks.where((b) => b.width >= 2).toList();
     if (largeBlocks.isEmpty && _blocks.isEmpty) {
-      _mascotQuote = 'Hiện tại không có con cá lớn nào để biến đổi meow!';
+      _mascotQuote = 'No large fish on the board to transform right now, meow!';
       notifyListeners();
       return;
     }
@@ -1092,14 +1092,14 @@ class GameController extends ChangeNotifier {
               ));
             }
           }
-          _mascotQuote = 'Đũa sao biển đã biến đổi toàn bộ cá lớn thành cá nhỏ cho thông thoáng!';
+          _mascotQuote = 'Starfish Wand split all large fish into tiny fish!';
         } else {
           // All fish are 1-cell: shuffle them to clear rows
           final cols = List.generate(GameConstants.boardCols, (i) => i)..shuffle(_random);
           for (int i = 0; i < _blocks.length; i++) {
             _blocks[i].col = cols[i % cols.length];
           }
-          _mascotQuote = 'Đũa sao biển đã hoán đổi vị trí các con cá cho thông thoáng!';
+          _mascotQuote = 'Starfish Wand shuffled the fish to open up space!';
         }
 
         notifyListeners();
