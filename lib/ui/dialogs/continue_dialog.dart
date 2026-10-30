@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../models/player_data.dart';
+import '../widgets/game_popup_kit.dart';
 
 class ContinueDialog extends StatefulWidget {
   final VoidCallback onRevive;
@@ -47,172 +48,145 @@ class _ContinueDialogState extends State<ContinueDialog> {
     const reviveCostGold = 2;
     final canAfford = playerData.goldFish >= reviveCostGold;
 
-    return Dialog(
-      backgroundColor: Colors.transparent,
-      elevation: 0,
-      child: Container(
-        padding: const EdgeInsets.all(24),
-        constraints: const BoxConstraints(maxWidth: 320),
-        decoration: BoxDecoration(
-          color: const Color(0xFFFFF7EA),
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: const Color(0xFFD6A266), width: 4),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.3),
-              blurRadius: 16,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Circular countdown with icon
-            Stack(
-              alignment: Alignment.center,
-              children: [
-                SizedBox(
-                  width: 80,
-                  height: 80,
-                  child: CircularProgressIndicator(
-                    value: _countdown / 5.0,
-                    strokeWidth: 6,
-                    backgroundColor: Colors.orange.shade100,
-                    color: Colors.orange,
-                  ),
-                ),
-                Text(
-                  '$_countdown',
-                  style: const TextStyle(
-                    fontFamily: 'JandaManatee',
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF6B4226),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
+    return GamePopupFrame(
+      title: 'CONTINUE?',
+      bannerPalette: GameButtonPalette.orange,
+      maxWidth: 335,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(height: 6),
 
-            // Sad Haru image
-            Image.asset(
-              'assets/images/sprites/ui/Haru_sad.png',
-              height: 90,
-              errorBuilder: (_, __, ___) => const Icon(
-                Icons.pets,
-                size: 60,
-                color: Color(0xFFD6A266),
+          // 3D Ocean Countdown Ring + Mascot Row
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              Container(
+                width: 82,
+                height: 82,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xFFD5F3FA),
+                  border: Border.all(color: const Color(0xFF6CC0D6), width: 2),
+                ),
               ),
-            ),
-            const SizedBox(height: 12),
+              SizedBox(
+                width: 82,
+                height: 82,
+                child: CircularProgressIndicator(
+                  value: _countdown / 5.0,
+                  strokeWidth: 7,
+                  strokeCap: StrokeCap.round,
+                  backgroundColor: const Color(0xFFB3E5FC),
+                  color: _countdown <= 2
+                      ? const Color(0xFFFF5252)
+                      : const Color(0xFFFF9800),
+                ),
+              ),
+              GameStrokedText(
+                '$_countdown',
+                fontSize: 34,
+                fillColor: _countdown <= 2
+                    ? const Color(0xFFFFEBEE)
+                    : Colors.white,
+                strokeColor: _countdown <= 2
+                    ? const Color(0xFF7F1D1D)
+                    : const Color(0xFF134B5A),
+                strokeWidth: 5.2,
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
 
-            const Text(
-              'CONTINUE?',
-              style: TextStyle(
-                fontFamily: 'JandaManatee',
-                fontSize: 26,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF6B4226),
-              ),
+          Image.asset(
+            'assets/images/sprites/ui/Haru_sad.png',
+            height: 84,
+            errorBuilder: (_, __, ___) => const Icon(
+              Icons.waves_rounded,
+              size: 56,
+              color: Color(0xFF26C6DA),
             ),
-            const SizedBox(height: 8),
-            const Text(
-              'Revive now to clear 4 rows\nand keep your awesome score!',
+          ),
+          const SizedBox(height: 10),
+
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFFD7F4FA),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFF81CBE0), width: 1.5),
+            ),
+            child: const Text(
+              'Hồi sinh ngay để dọn trống 4 hàng trên cùng và giữ nguyên điểm số!',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontFamily: 'BrandonText',
-                fontSize: 14,
-                color: Color(0xFF8B5A2B),
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF155161),
               ),
             ),
-            const SizedBox(height: 20),
+          ),
+          const SizedBox(height: 16),
 
-            // Revive button
-            GestureDetector(
-              onTap: () {
-                _timer?.cancel();
-                if (canAfford) {
-                  playerData.spendGoldFish(reviveCostGold);
-                  widget.onRevive();
-                } else {
-                  // Free emergency continue!
-                  widget.onRevive();
-                }
-              },
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFFFF9800), Color(0xFFF57C00)],
+          // Revive 3D Button
+          Game3DButton(
+            height: 52,
+            palette: GameButtonPalette.green,
+            onTap: () {
+              _timer?.cancel();
+              if (canAfford) {
+                playerData.spendGoldFish(reviveCostGold);
+                widget.onRevive();
+              } else {
+                widget.onRevive();
+              }
+            },
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (canAfford) ...[
+                  Image.asset(
+                    'assets/images/sprites/ui/coin-gold-8.png',
+                    width: 23,
+                    height: 23,
+                    errorBuilder: (_, __, ___) =>
+                        const Icon(Icons.star, color: Colors.yellow, size: 20),
                   ),
-                  borderRadius: BorderRadius.circular(30),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.orange.withOpacity(0.4),
-                      blurRadius: 8,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    if (canAfford) ...[
-                      Image.asset(
-                        'assets/images/sprites/ui/coin-gold-8.png',
-                        width: 24,
-                        height: 24,
-                        errorBuilder: (_, __, ___) => const Icon(Icons.star, color: Colors.yellow, size: 20),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        '$reviveCostGold CONTINUE',
-                        style: const TextStyle(
-                          fontFamily: 'JandaManatee',
-                          fontSize: 16,
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ] else ...[
-                      const Icon(Icons.play_arrow_rounded, color: Colors.white),
-                      const SizedBox(width: 6),
-                      const Text(
-                        'FREE CONTINUE',
-                        style: TextStyle(
-                          fontFamily: 'JandaManatee',
-                          fontSize: 16,
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
+                  const SizedBox(width: 8),
+                  GameStrokedText(
+                    '$reviveCostGold  CONTINUE',
+                    fontSize: 17.5,
+                    strokeColor: GameButtonPalette.green.textStroke,
+                    strokeWidth: 4.4,
+                  ),
+                ] else ...[
+                  const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 24),
+                  const SizedBox(width: 6),
+                  GameStrokedText(
+                    'FREE CONTINUE',
+                    fontSize: 17.5,
+                    strokeColor: GameButtonPalette.green.textStroke,
+                    strokeWidth: 4.4,
+                  ),
+                ],
+              ],
             ),
-            const SizedBox(height: 10),
+          ),
+          const SizedBox(height: 10),
 
-            // Give up button
-            TextButton(
-              onPressed: () {
-                _timer?.cancel();
-                widget.onGiveUp();
-              },
-              child: const Text(
-                'NO, THANKS',
-                style: TextStyle(
-                  fontFamily: 'BrandonText',
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF9E9E9E),
-                ),
-              ),
-            ),
-          ],
-        ),
+          // Give Up 3D Slate Button
+          Game3DButton(
+            label: 'NO, THANKS',
+            palette: GameButtonPalette.slate,
+            height: 42,
+            fontSize: 14,
+            onTap: () {
+              _timer?.cancel();
+              widget.onGiveUp();
+            },
+          ),
+        ],
       ),
     );
   }

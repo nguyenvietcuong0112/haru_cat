@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import '../widgets/game_popup_kit.dart';
 
 class GameOverDialog extends StatelessWidget {
   final int score;
@@ -24,14 +25,12 @@ class GameOverDialog extends StatelessWidget {
   });
 
   static const List<String> funFacts = [
-    'Playing tips: Check the next blocks before you move the cat!',
-    'NASA recently pinpointed that the perfect refreshing nap is 26 minutes long.',
-    'Brain fact: The human brain weighs only about 3 lbs (1.5 kg).',
-    'Playing tips: Prioritize clearing larger size-3 blocks first to create space!',
-    'Brain fact: Concentration and puzzle abilities peak with daily brain training.',
-    'Did you know: Cats spend 70% of their lives sleeping and 15% grooming!',
-    'Playing tips: Special lightning cats can clear entire columns when triggered!',
-    'Relaxing with puzzle games helps boost memory and reduces daily stress.',
+    'Mẹo: Quan sát hàng cá chuẩn bị ở đáy trước khi trượt!',
+    'Mẹo: Ưu tiên dọn các chú cá lớn 3-4 ô để bể luôn thông thoáng!',
+    'Mẹo: Xóa hàng liên hoàn từ trên xuống để nhân điểm Combo cực lớn!',
+    'Mẹo: Búa Ốc có thể đập vỡ tảng băng chỉ trong 1 lần duy nhất!',
+    'Mẹo: Thu thập hộp quà trong hàng để nhận Vàng, Bạc và Đạo cụ miễn phí!',
+    'Mẹo: Đừng để cá Bom đếm ngược về 0 nếu không muốn bị thả thêm cá cản trở!',
   ];
 
   final String randomFact = funFacts[Random().nextInt(funFacts.length)];
@@ -40,147 +39,163 @@ class GameOverDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     final isNewRecord = score > 0 && score >= bestScore;
 
-    return Dialog(
-      backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        constraints: const BoxConstraints(maxWidth: 360),
-        decoration: BoxDecoration(
-          color: const Color(0xFFFFF8E7),
-          borderRadius: BorderRadius.circular(28),
-          border: Border.all(color: const Color(0xFFD6A266), width: 4),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.35),
-              blurRadius: 20,
-              offset: const Offset(0, 10),
-            ),
-          ],
-        ),
+    return GamePopupFrame(
+      title: 'GAME OVER',
+      bannerPalette: GameButtonPalette.coral,
+      maxWidth: 365,
+      child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Character
+            // Character Mascot
             Image.asset(
               'assets/images/characters/GameOverCharacter.png',
-              height: 90,
-              errorBuilder: (_, __, ___) => const Text('😿', style: TextStyle(fontSize: 50)),
+              height: 82,
+              errorBuilder: (_, __, ___) =>
+                  const Text('😿', style: TextStyle(fontSize: 46)),
             ),
             const SizedBox(height: 8),
 
-            const Text(
-              'GAME OVER',
-              style: TextStyle(
-                fontFamily: 'JandaManatee',
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFFD32F2F),
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            // Score Banner
+            // Deep Ocean Score Plaque
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 10),
+              padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 14),
               decoration: BoxDecoration(
-                color: const Color(0xFF5D4037),
-                borderRadius: BorderRadius.circular(16),
+                gradient: const LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Color(0xFF15768D), Color(0xFF0B4A5A)],
+                ),
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(
+                  color: isNewRecord
+                      ? const Color(0xFFFFD54F)
+                      : const Color(0xFF6AD5E8),
+                  width: 2.5,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF073440).withValues(alpha: 0.28),
+                    blurRadius: 6,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
               ),
               child: Column(
                 children: [
-                  const Text(
-                    'YOUR SCORE',
-                    style: TextStyle(
-                      fontFamily: 'BrandonText',
-                      color: Color(0xFFFFD54F),
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  const GameStrokedText(
+                    'SCORE',
+                    fontSize: 13,
+                    fillColor: Color(0xFFFFE082),
+                    strokeColor: Color(0xFF07303B),
+                    strokeWidth: 3.2,
                   ),
-                  Text(
+                  const SizedBox(height: 2),
+                  GameStrokedText(
                     '$score',
-                    style: const TextStyle(
-                      fontFamily: 'JandaManatee',
-                      color: Colors.white,
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    fontSize: 32,
+                    fillColor: Colors.white,
+                    strokeColor: const Color(0xFF062933),
+                    strokeWidth: 5.5,
                   ),
                   if (isNewRecord)
                     Container(
                       margin: const EdgeInsets.only(top: 4),
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
                       decoration: BoxDecoration(
-                        color: Colors.amber,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Text(
-                        '★ NEW HIGH SCORE! ★',
-                        style: TextStyle(
-                          fontFamily: 'BrandonText',
-                          color: Color(0xFF5D4037),
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFFFFD54F), Color(0xFFFF9800)],
                         ),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.white, width: 1.5),
+                      ),
+                      child: const GameStrokedText(
+                        '★ NEW BEST! ★',
+                        fontSize: 11.5,
+                        strokeColor: Color(0xFF682C00),
+                        strokeWidth: 3.0,
                       ),
                     ),
                   const SizedBox(height: 4),
-                  Text(
+                  GameStrokedText(
                     'BEST: $bestScore',
-                    style: const TextStyle(
-                      fontFamily: 'BrandonText',
-                      color: Color(0xFFD7CCC8),
-                      fontSize: 12,
-                    ),
+                    fontSize: 12.5,
+                    fillColor: const Color(0xFFB2EBF2),
+                    strokeColor: const Color(0xFF07303B),
+                    strokeWidth: 3.0,
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
 
-            // Stats 4-Grid
+            // 2x2 Ocean Stat Tiles
             Row(
               children: [
                 Expanded(
-                  child: _buildStatBadge('Lines Cleared', '$linesCleared', Icons.grid_view_rounded),
+                  child: _buildStatTile(
+                    label: 'LINES',
+                    value: '$linesCleared',
+                    icon: Icons.waves_rounded,
+                    iconColor: const Color(0xFF00ACC1),
+                  ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: _buildStatBadge('Special Cleared', '$specialBlocksCleared', Icons.bolt_rounded),
+                  child: _buildStatTile(
+                    label: 'SPECIAL',
+                    value: '$specialBlocksCleared',
+                    icon: Icons.auto_awesome_rounded,
+                    iconColor: const Color(0xFFFF9800),
+                  ),
                 ),
               ],
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 7),
             Row(
               children: [
                 Expanded(
-                  child: _buildStatBadge('Max Combo', '${maxCombo}x', Icons.local_fire_department_rounded),
+                  child: _buildStatTile(
+                    label: 'MAX COMBO',
+                    value: '${maxCombo}x',
+                    icon: Icons.local_fire_department_rounded,
+                    iconColor: const Color(0xFFFF5252),
+                  ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: _buildStatBadge('Silver Earned', '+$silverEarned', Icons.set_meal_rounded),
+                  child: _buildStatTile(
+                    label: 'SILVER',
+                    value: '+$silverEarned',
+                    assetIcon: 'assets/images/sprites/ui/coin-silver-8.png',
+                    icon: Icons.monetization_on_rounded,
+                    iconColor: const Color(0xFF26A69A),
+                  ),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
 
-            // Fun Fact Box
+            // Ocean Tip Scroll Plaque
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               decoration: BoxDecoration(
-                color: const Color(0xFFFFF0D4),
+                color: const Color(0xFFD7F4FA),
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: Colors.orange.shade200),
+                border: Border.all(color: const Color(0xFF81CBE0), width: 1.6),
               ),
               child: Row(
                 children: [
                   Image.asset(
                     'assets/images/sprites/ui/tag_fun_fact.png',
-                    width: 28,
-                    height: 28,
-                    errorBuilder: (_, __, ___) => const Icon(Icons.lightbulb, color: Colors.amber, size: 24),
+                    width: 26,
+                    height: 26,
+                    errorBuilder: (_, __, ___) => const Icon(
+                      Icons.lightbulb_rounded,
+                      color: Color(0xFFFFB300),
+                      size: 22,
+                    ),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
@@ -188,68 +203,34 @@ class GameOverDialog extends StatelessWidget {
                       randomFact,
                       style: const TextStyle(
                         fontFamily: 'BrandonText',
-                        fontSize: 11,
-                        color: Color(0xFF6B4226),
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF175363),
                       ),
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
 
-            // Replay Button
-            GestureDetector(
+            // Action Buttons
+            Game3DButton(
+              label: 'PLAY AGAIN',
+              icon: Icons.replay_rounded,
+              palette: GameButtonPalette.green,
+              height: 50,
+              fontSize: 18,
               onTap: onReplay,
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFFFF9800), Color(0xFFF57C00)],
-                  ),
-                  borderRadius: BorderRadius.circular(24),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.orange.withOpacity(0.4),
-                      blurRadius: 6,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
-                ),
-                child: const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.replay_rounded, color: Colors.white, size: 20),
-                    SizedBox(width: 8),
-                    Text(
-                      'PLAY AGAIN',
-                      style: TextStyle(
-                        fontFamily: 'JandaManatee',
-                        fontSize: 15,
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
             ),
-            const SizedBox(height: 8),
-
-            // Home Button
-            TextButton.icon(
-              onPressed: onHome,
-              icon: const Icon(Icons.home_rounded, color: Color(0xFF6B4226), size: 18),
-              label: const Text(
-                'MAIN MENU',
-                style: TextStyle(
-                  fontFamily: 'BrandonText',
-                  fontSize: 13,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF6B4226),
-                ),
-              ),
+            const SizedBox(height: 9),
+            Game3DButton(
+              label: 'HOME',
+              icon: Icons.home_rounded,
+              palette: GameButtonPalette.gold,
+              height: 45,
+              fontSize: 15.5,
+              onTap: onHome,
             ),
           ],
         ),
@@ -257,33 +238,52 @@ class GameOverDialog extends StatelessWidget {
     );
   }
 
-  Widget _buildStatBadge(String title, String val, IconData icon) {
+  Widget _buildStatTile({
+    required String label,
+    required String value,
+    required IconData icon,
+    required Color iconColor,
+    String? assetIcon,
+  }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE2C4A2)),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFF83C7D9), width: 1.8),
       ),
       child: Row(
         children: [
-          Icon(icon, size: 18, color: Colors.orange),
-          const SizedBox(width: 6),
+          if (assetIcon != null)
+            Image.asset(
+              assetIcon,
+              width: 22,
+              height: 22,
+              errorBuilder: (_, __, ___) => Icon(icon, size: 20, color: iconColor),
+            )
+          else
+            Icon(icon, size: 21, color: iconColor),
+          const SizedBox(width: 7),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  title,
-                  style: TextStyle(fontFamily: 'BrandonText', fontSize: 9, color: Colors.brown.shade400),
-                ),
-                Text(
-                  val,
+                  label,
                   style: const TextStyle(
-                    fontFamily: 'JandaManatee',
-                    fontSize: 12,
+                    fontFamily: 'BrandonText',
+                    fontSize: 9.5,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF5D4037),
+                    color: Color(0xFF3E7888),
+                  ),
+                ),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: GameStrokedText(
+                    value,
+                    fontSize: 14,
+                    strokeColor: const Color(0xFF134B5A),
+                    strokeWidth: 3.2,
                   ),
                 ),
               ],

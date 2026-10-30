@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../widgets/game_popup_kit.dart';
 
 class LevelCompleteDialog extends StatelessWidget {
   final int stars;
@@ -16,113 +17,95 @@ class LevelCompleteDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(
-      backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 28),
-      child: Container(
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: const Color(0xFFFFF8E7),
-          borderRadius: BorderRadius.circular(28),
-          border: Border.all(color: const Color(0xFFFFD54F), width: 3),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.4),
-              blurRadius: 18,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Happy Mascot
-            Image.asset(
-              'assets/images/characters/BestScoreCharacter.png',
-              height: 110,
-              errorBuilder: (ctx, err, stack) => const Text('😸', style: TextStyle(fontSize: 60)),
-            ),
-            const SizedBox(height: 12),
+    return GamePopupFrame(
+      title: 'VICTORY!',
+      bannerPalette: GameButtonPalette.gold,
+      maxWidth: 350,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(height: 6),
 
-            const Text(
-              'CHIẾN THẮNG!',
-              style: TextStyle(
-                fontSize: 26,
-                fontWeight: FontWeight.w900,
-                color: Color(0xFF4CAF50),
-                letterSpacing: 1.2,
-              ),
-            ),
-            const SizedBox(height: 16),
+          // Happy Mascot
+          Image.asset(
+            'assets/images/characters/BestScoreCharacter.png',
+            height: 98,
+            errorBuilder: (ctx, err, stack) =>
+                const Text('😸', style: TextStyle(fontSize: 56)),
+          ),
+          const SizedBox(height: 10),
 
-            // Stars Row
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(3, (index) {
-                final isAchieved = index < stars;
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 6),
-                  child: Icon(
-                    isAchieved ? Icons.star_rounded : Icons.star_border_rounded,
-                    color: isAchieved ? const Color(0xFFFFB300) : Colors.grey[400],
-                    size: 46,
-                  ),
-                );
-              }),
-            ),
-            const SizedBox(height: 12),
-
-            Text(
-              'Số lượt di chuyển: $moves',
-              style: const TextStyle(
-                fontSize: 14,
-                color: Color(0xFF5D4037),
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            // Next Level Button
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton.icon(
-                onPressed: onNextLevel,
-                icon: const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 24),
-                label: const Text(
-                  'MÀN KẾ TIẾP',
-                  style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w900),
+          // 3D Arcade Stars Row
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(3, (index) {
+              final isAchieved = index < stars;
+              return Padding(
+                padding: EdgeInsets.only(
+                  left: 6,
+                  right: 6,
+                  bottom: index == 1 ? 8 : 0,
                 ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF4CAF50),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                  elevation: 4,
+                child: Icon(
+                  Icons.star_rounded,
+                  color: isAchieved
+                      ? const Color(0xFFFFCA28)
+                      : const Color(0xFFB0BEC5),
+                  size: index == 1 ? 52 : 44,
+                  shadows: [
+                    Shadow(
+                      color: isAchieved
+                          ? const Color(0xFF8C5300)
+                          : const Color(0xFF546E7A),
+                      offset: const Offset(0, 3),
+                      blurRadius: 1,
+                    ),
+                  ],
                 ),
-              ),
-            ),
-            const SizedBox(height: 10),
+              );
+            }),
+          ),
+          const SizedBox(height: 10),
 
-            // Level List / Home Button
-            SizedBox(
-              width: double.infinity,
-              height: 46,
-              child: OutlinedButton.icon(
-                onPressed: onHome,
-                icon: const Icon(Icons.list_alt_rounded, color: Color(0xFF5D4037)),
-                label: const Text(
-                  'DANH SÁCH MÀN',
-                  style: TextStyle(color: Color(0xFF5D4037), fontSize: 14, fontWeight: FontWeight.bold),
-                ),
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: Color(0xFFBCAAA4), width: 2),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                ),
-              ),
+          // Moves Pill
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 7),
+            decoration: BoxDecoration(
+              color: const Color(0xFFD5F3FA),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFF7EC3D6), width: 1.8),
             ),
-          ],
-        ),
+            child: GameStrokedText(
+              'MOVES: $moves',
+              fontSize: 15,
+              strokeColor: const Color(0xFF134B5A),
+              strokeWidth: 3.6,
+            ),
+          ),
+          const SizedBox(height: 18),
+
+          // Next Level Button
+          Game3DButton(
+            label: 'NEXT LEVEL',
+            icon: Icons.arrow_forward_rounded,
+            palette: GameButtonPalette.green,
+            height: 50,
+            fontSize: 17.5,
+            onTap: onNextLevel,
+          ),
+          const SizedBox(height: 10),
+
+          // Level List Button
+          Game3DButton(
+            label: 'LEVELS',
+            icon: Icons.grid_view_rounded,
+            palette: GameButtonPalette.gold,
+            height: 45,
+            fontSize: 15.5,
+            onTap: onHome,
+          ),
+        ],
       ),
     );
   }
 }
-

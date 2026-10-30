@@ -76,7 +76,7 @@ class ScoreHeader extends StatelessWidget {
               // Row 2: Collection Button (left), and Score Pill (right)
               Row(
                 children: [
-                  // Collection Button (đổi từ Skill Button theo feedback)
+                  // Collection Button (synchronized ocean glass capsule)
                   GestureDetector(
                     onTap: () => showDialog(
                       context: context,
@@ -85,12 +85,12 @@ class ScoreHeader extends StatelessWidget {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFE0F7FA),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: const Color(0xFF80DEEA), width: 2),
+                        color: Colors.white.withValues(alpha: 0.90),
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(color: const Color(0xFF6DC4D8), width: 2),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.08),
+                            color: const Color(0xFF5AA5B8).withValues(alpha: 0.22),
                             blurRadius: 4,
                             offset: const Offset(0, 2),
                           ),
@@ -104,8 +104,8 @@ class ScoreHeader extends StatelessWidget {
                             height: 34,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: Colors.white,
-                              border: Border.all(color: const Color(0xFF80DEEA), width: 1.5),
+                              color: const Color(0xFFE0F7FA),
+                              border: Border.all(color: const Color(0xFF6DC4D8), width: 1.5),
                             ),
                             child: ClipOval(
                               child: Image.asset(
@@ -148,79 +148,88 @@ class ScoreHeader extends StatelessWidget {
                   ),
                   const SizedBox(width: 10),
 
-                  // Score Capsule (matches score_pill.png)
+                  // Score Capsule (matches official ocean HUD design: aqua rim + dual cream inner pills)
                   Expanded(
                     child: Container(
                       height: 48,
+                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 4),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFE0F7FA),
+                        color: const Color(0xFFB3E0EA),
                         borderRadius: BorderRadius.circular(24),
-                        border: Border.all(color: const Color(0xFF80DEEA), width: 2),
+                        border: Border.all(color: const Color(0xFF6A9FAD), width: 2),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.08),
-                            blurRadius: 4,
+                            color: const Color(0xFF478291).withValues(alpha: 0.22),
+                            blurRadius: 5,
                             offset: const Offset(0, 2),
                           ),
                         ],
                       ),
                       child: Row(
                         children: [
-                          // Left half: Best Score
+                          // Left inner capsule: Best Score
                           Expanded(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Text(
-                                  'Best Score',
-                                  style: TextStyle(
-                                    fontFamily: 'BrandonText',
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.black87,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFFFAEC),
+                                borderRadius: BorderRadius.circular(18),
+                              ),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Text(
+                                    'Best Score',
+                                    style: TextStyle(
+                                      fontFamily: 'BrandonText',
+                                      fontSize: 9.5,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF263238),
+                                    ),
                                   ),
-                                ),
-                                Text(
-                                  '${controller.bestScore}',
-                                  style: const TextStyle(
-                                    fontFamily: 'JandaManatee',
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.black,
+                                  Text(
+                                    '${controller.bestScore}',
+                                    style: const TextStyle(
+                                      fontFamily: 'JandaManatee',
+                                      fontSize: 14.5,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF1A252B),
+                                    ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           ),
-                          Container(
-                            width: 1.5,
-                            height: 28,
-                            color: const Color(0xFF80DEEA),
-                          ),
-                          // Right half: SCORE
+                          const SizedBox(width: 5),
+                          // Right inner capsule: SCORE
                           Expanded(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Text(
-                                  'SCORE',
-                                  style: TextStyle(
-                                    fontFamily: 'BrandonText',
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.black87,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFFFAEC),
+                                borderRadius: BorderRadius.circular(18),
+                              ),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Text(
+                                    'SCORE',
+                                    style: TextStyle(
+                                      fontFamily: 'BrandonText',
+                                      fontSize: 9.5,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF006064),
+                                    ),
                                   ),
-                                ),
-                                Text(
-                                  '${controller.score}',
-                                  style: const TextStyle(
-                                    fontFamily: 'JandaManatee',
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.black,
+                                  Text(
+                                    '${controller.score}',
+                                    style: const TextStyle(
+                                      fontFamily: 'JandaManatee',
+                                      fontSize: 15.5,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF004D5A),
+                                    ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           ),
                         ],
@@ -247,15 +256,16 @@ class ScoreHeader extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        constraints: const BoxConstraints(minWidth: 95, maxHeight: 34),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
         decoration: BoxDecoration(
-          color: const Color(0xFFE0F7FA),
+          color: Colors.white.withValues(alpha: 0.92),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: const Color(0xFF80DEEA), width: 2),
+          border: Border.all(color: const Color(0xFF6DC4D8), width: 2.0),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.06),
-              blurRadius: 3,
+              color: const Color(0xFF5AA5B8).withValues(alpha: 0.25),
+              blurRadius: 4,
               offset: const Offset(0, 2),
             ),
           ],

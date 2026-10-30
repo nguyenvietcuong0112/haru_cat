@@ -4,6 +4,7 @@ import '../../audio/audio_manager.dart';
 import '../../models/player_data.dart';
 import '../../logic/game_controller.dart';
 import 'game_screen.dart';
+import '../dialogs/exit_game_dialog.dart';
 import '../dialogs/settings_dialog.dart';
 import '../dialogs/shop_dialog.dart';
 
@@ -19,6 +20,17 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   final PlayerData _playerData = PlayerData();
 
   late AnimationController _swimController;
+  bool _isExitDialogOpen = false;
+
+  Future<void> _showExitGameDialog() async {
+    if (_isExitDialogOpen || !mounted) return;
+    _isExitDialogOpen = true;
+    await showDialog<bool>(
+      context: context,
+      builder: (_) => const ExitGameDialog(),
+    );
+    _isExitDialogOpen = false;
+  }
 
   @override
   void initState() {
@@ -40,10 +52,16 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _playerData,
-      builder: (context, _) {
-        return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        _showExitGameDialog();
+      },
+      child: AnimatedBuilder(
+        animation: _playerData,
+        builder: (context, _) {
+          return Scaffold(
           body: LayoutBuilder(
             builder: (context, constraints) {
               final w = constraints.maxWidth;
@@ -231,6 +249,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           ),
         );
       },
+    ),
     );
   }
 

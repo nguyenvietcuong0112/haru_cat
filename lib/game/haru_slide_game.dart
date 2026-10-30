@@ -214,12 +214,20 @@ class HaruSlideGame extends FlameGame with DragCallbacks, TapCallbacks {
     final removedIds = _activeComponents.keys.where((id) => !currentBlockIds.contains(id)).toList();
     for (final id in removedIds) {
       final comp = _activeComponents.remove(id)!;
+      final cx = comp.visualX + comp.width / 2;
+      final cy = comp.visualY + comp.height / 2;
       if (comp.block.type == BlockType.bomb && comp.block.bombCountdown <= 0) {
-        particleManager.spawnBombExplosion(
-          comp.visualX + comp.width / 2,
-          comp.visualY + comp.height / 2,
-        );
-        triggerShake(duration: 0.35, intensity: 6.0);
+        particleManager.spawnBombExplosion(cx, cy);
+        triggerShake(duration: 0.32, intensity: 5.5);
+      } else if (!comp.block.isClearing) {
+        // Shattered by Hammer, scooped by Net, or blasted by chain reaction
+        if (comp.block.type == BlockType.ice) {
+          particleManager.spawnIceBreak(cx, cy, comp.width);
+        } else if (comp.block.type == BlockType.sealed) {
+          particleManager.spawnSeaweedBreak(cx, cy, comp.width);
+        } else {
+          particleManager.spawnFishPopBurst(cx, cy, comp.width, 1);
+        }
       }
       comp.removeFromParent();
     }
@@ -254,19 +262,45 @@ class HaruSlideGame extends FlameGame with DragCallbacks, TapCallbacks {
       _lastHandledClearTimestamp = event.timestamp;
 
       final rowY = rowToY(event.rowIndex) + cellSize / 2;
-      particleManager.spawnRowLaser(rowY, boardWidth, event.combo);
-      triggerShake(duration: 0.22, intensity: 2.0 + event.combo * 1.5);
+      particleManager.spawnAquaticRowWave(rowY, cellSize, boardWidth, event.combo);
+      triggerShake(
+        duration: 0.18,
+        intensity: 1.5 + min(4.0, event.combo * 1.1),
+      );
 
-      // Spawn floating score & combo texts
+      // Staggered per-fish pop bursts (ripples, glossy bubbles, twinkling stars) & floating score
       for (final b in event.blocks) {
-        final textX = colToX(b.col) + (b.width * cellSize) / 2;
+        final blockW = b.width * cellSize;
+        final centerX = colToX(b.col) + blockW / 2;
+        final staggerDelay = b.col * 0.022 + 0.08;
+
+        particleManager.spawnFishPopBurst(
+          centerX,
+          rowY,
+          blockW,
+          event.combo,
+          delay: staggerDelay,
+        );
+
         particleManager.spawnFloatingText(
-          textX,
+          centerX,
           rowY - 12,
           '+${b.points}',
-          event.combo > 1 ? const Color(0xFFFFD54F) : const Color(0xFF00E5FF),
-          size: event.combo > 1 ? 20.0 : 16.0,
+          event.combo > 1 ? const Color(0xFFFFD54F) : const Color(0xFF40C4FF),
+          size: event.combo > 1 ? 19.0 : 16.0,
+          delay: staggerDelay,
         );
+      }
+
+      // Ice shatter & seaweed unseal bursts on surviving obstacle fish
+      for (final obs in event.brokenObstacles) {
+        final obsW = obs.width * cellSize;
+        final obsCenterX = colToX(obs.col) + obsW / 2;
+        if (obs.wasIce) {
+          particleManager.spawnIceBreak(obsCenterX, rowY, obsW);
+        } else {
+          particleManager.spawnSeaweedBreak(obsCenterX, rowY, obsW);
+        }
       }
 
       if (event.combo > 1) {
@@ -274,8 +308,9 @@ class HaruSlideGame extends FlameGame with DragCallbacks, TapCallbacks {
           boardWidth / 2,
           rowY - 30,
           'COMBO x${event.combo}!',
-          const Color(0xFFFF7043),
-          size: 24.0,
+          const Color(0xFFFFAB40),
+          size: 23.0,
+          delay: 0.05,
         );
       }
     }

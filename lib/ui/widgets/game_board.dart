@@ -63,10 +63,10 @@ class _GameBoardState extends State<GameBoard> {
         final isEndless = controller.mode == GameMode.endless;
 
         // Calculate available space, reserving space for top boat mascot
-        const outerPadding = 4.0;
-        const outerBorder = 3.0;
-        const extraSpace = (outerPadding + outerBorder) * 2; // 14.0
-        const boatHeight = 36.0;
+        const outerPadding = 3.5;
+        const outerBorder = 2.5;
+        const extraSpace = (outerPadding + outerBorder) * 2; // 12.0
+        const boatHeight = 44.0;
 
         // Safety margin of 12.0px to prevent any fractional subpixel rounding overflow
         final availableW = constraints.maxWidth - extraSpace - 8.0;
@@ -95,24 +95,30 @@ class _GameBoardState extends State<GameBoard> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // 0. Cute Floating Boat Mascot on surface of water tank
+              // 0. Cute Floating Boat Mascot on elliptical water surface of the aquarium tank
               _FloatingBoatWidget(
                 isHappy: controller.clearingRowIndex != null,
                 height: boatHeight,
+                tankWidth: boardW + extraSpace,
               ),
 
-              // 1. Water Tank Board
+              // 1. Glass Aquarium Water Tank Board
               Container(
                 padding: const EdgeInsets.all(outerPadding),
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: const Color(0xFF80DEEA), width: outerBorder),
-                  color: const Color(0xFFE0F7FA).withOpacity(0.5),
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(14),
+                    topRight: Radius.circular(14),
+                    bottomLeft: Radius.circular(18),
+                    bottomRight: Radius.circular(18),
+                  ),
+                  border: Border.all(color: const Color(0xFF63A1B2), width: outerBorder),
+                  color: Colors.white.withOpacity(0.58),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFF006064).withOpacity(0.18),
-                      blurRadius: 12,
-                      offset: const Offset(0, 6),
+                      color: const Color(0xFF004D5A).withOpacity(0.20),
+                      blurRadius: 16,
+                      offset: const Offset(0, 8),
                     ),
                   ],
                 ),
@@ -125,11 +131,13 @@ class _GameBoardState extends State<GameBoard> {
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
                       colors: [
-                        Color(0xFFE0F7FA), // Light crystal water top
-                        Color(0xFFB2EBF2), // Deeper aqua water bottom
+                        Color(0xFFD6F7FC), // Sunlit crystal water surface
+                        Color(0xFFB3ECF5), // Mid aquarium aqua
+                        Color(0xFF9DE3EE), // Deeper aquarium bottom
                       ],
+                      stops: [0.0, 0.65, 1.0],
                     ),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(11),
                   ),
                   child: Stack(
                     children: [
@@ -203,14 +211,16 @@ class _GameBoardState extends State<GameBoard> {
   }
 }
 
-/// Floating Boat Mascot that bobs gently on the water tank waves
+/// Floating Boat Mascot that bobs gently on an elliptical water-tank surface rim
 class _FloatingBoatWidget extends StatefulWidget {
   final bool isHappy;
   final double height;
+  final double tankWidth;
 
   const _FloatingBoatWidget({
     required this.isHappy,
-    this.height = 36.0,
+    this.height = 44.0,
+    required this.tankWidth,
   });
 
   @override
@@ -239,27 +249,61 @@ class _FloatingBoatWidgetState extends State<_FloatingBoatWidget>
   @override
   Widget build(BuildContext context) {
     return SizedBox(
+      width: widget.tankWidth,
       height: widget.height,
-      child: AnimatedBuilder(
-        animation: _animController,
-        builder: (context, child) {
-          final phase = _animController.value * 2 * pi;
-          final waveY = sin(phase) * 2.0 + (widget.isHappy ? -4.0 : 0.0);
-          final tilt = sin(phase * 0.8) * 0.025;
-
-          return Transform.translate(
-            offset: Offset(0, waveY),
-            child: Transform.rotate(
-              angle: tilt,
-              child: Image.asset(
-                'assets/images/sprites/ui/boat_mascot.png',
-                height: widget.height,
-                fit: BoxFit.contain,
-                errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+      child: Stack(
+        alignment: Alignment.bottomCenter,
+        clipBehavior: Clip.none,
+        children: [
+          // Curved elliptical water surface crown at top of tank
+          Positioned(
+            bottom: -5,
+            left: 2,
+            right: 2,
+            child: IgnorePointer(
+              child: Container(
+                height: 14,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [
+                      Color(0xFFB8EEF7),
+                      Color(0xFFDCF9FE),
+                      Color(0xFFB8EEF7),
+                    ],
+                  ),
+                  borderRadius: const BorderRadius.all(Radius.elliptical(180, 10)),
+                  border: Border.all(
+                    color: Colors.white.withOpacity(0.85),
+                    width: 1.4,
+                  ),
+                ),
               ),
             ),
-          );
-        },
+          ),
+
+          // Bobbing boat mascot
+          AnimatedBuilder(
+            animation: _animController,
+            builder: (context, child) {
+              final phase = _animController.value * 2 * pi;
+              final waveY = sin(phase) * 2.0 + (widget.isHappy ? -4.0 : 0.0);
+              final tilt = sin(phase * 0.8) * 0.025;
+
+              return Transform.translate(
+                offset: Offset(0, waveY - 1.0),
+                child: Transform.rotate(
+                  angle: tilt,
+                  child: Image.asset(
+                    'assets/images/sprites/ui/boat_mascot.png',
+                    height: widget.height - 2.0,
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
       ),
     );
   }

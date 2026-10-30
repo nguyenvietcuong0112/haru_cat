@@ -10,6 +10,7 @@ class FishBlockComponent extends PositionComponent
     with DragCallbacks, TapCallbacks, HasGameReference<HaruSlideGame> {
   final CatBlock block;
   bool isPreview;
+  late BlockType _lastBlockType;
 
   // Visual state
   double visualX = 0.0;
@@ -33,11 +34,14 @@ class FishBlockComponent extends PositionComponent
   int _lastGhostCol = -1;
   int _lastGhostRow = -1;
 
-  // Animation timers
+  // Idle & Clear Animation state (staggered pop-jump & bubble dissolve, zero white flash)
   double idleTimer = 0.0;
-  double flashAlpha = 0.0;
+  double _clearElapsed = 0.0;
   double clearScale = 1.0;
   double clearAlpha = 1.0;
+  double clearOffsetY = 0.0;
+  double clearTilt = 0.0;
+  double clearAuraAlpha = 0.0;
 
   // Cached bomb badge text painter
   TextPainter? _bombTextPainter;
@@ -48,9 +52,11 @@ class FishBlockComponent extends PositionComponent
   static final Paint _dragGlowPaint = Paint()
     ..color = const Color(0xFF00E5FF).withOpacity(0.6)
     ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8.0);
+  static final Paint _clearAuraPaint = Paint()
+    ..style = PaintingStyle.fill
+    ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 9.0);
   static final Paint _spritePaint = Paint()..filterQuality = FilterQuality.medium;
   static final Paint _fallbackPaint = Paint()..style = PaintingStyle.fill;
-  static final Paint _flashPaint = Paint()..style = PaintingStyle.fill;
   static final Paint _bombBgPaint = Paint()..style = PaintingStyle.fill;
   static final Paint _bombRingPaint = Paint()..style = PaintingStyle.stroke;
 
@@ -58,6 +64,7 @@ class FishBlockComponent extends PositionComponent
     required this.block,
     this.isPreview = false,
   }) {
+    _lastBlockType = block.type;
     idleTimer = Random().nextDouble() * 2 * pi;
   }
 
@@ -83,12 +90,22 @@ class FishBlockComponent extends PositionComponent
     targetX = block.col * game.cellSize;
     targetY = game.rowToY(block.row);
 
+    // Elastic liberation bounce when breaking free from ice or seaweed!
+    if (_lastBlockType != block.type) {
+      if (_lastBlockType == BlockType.ice || _lastBlockType == BlockType.sealed) {
+        squishX = 1.22;
+        squishY = 0.78;
+      }
+      _lastBlockType = block.type;
+    }
+
     if (!isDragging) {
       dragOffset = 0.0;
     }
 
+    // Cell-proportional initial drop speed (matches GameController._applyGravity timing on all screens)
     if (block.isFalling && velocityY <= 0) {
-      velocityY = 80.0;
+      velocityY = 2.8 * game.cellSize;
     }
 
     if (block.type == BlockType.bomb && block.bombCountdown != _lastBombCountdown) {
@@ -122,27 +139,30 @@ class FishBlockComponent extends PositionComponent
     if (!isDragging) {
       final dx = targetX - visualX;
       if (dx.abs() > 0.5) {
-        visualX += dx * min(1.0, 18.0 * dt);
+        visualX += dx * min(1.0, 20.0 * dt);
       } else {
         visualX = targetX;
       }
       dragTilt *= max(0.0, 1.0 - 15.0 * dt);
     }
 
-    // 2. Vertical position & Gravity Physics
+    // 2. Vertical position & Cell-Proportional Gravity Physics
     final dy = targetY - visualY;
     if (dy.abs() > 0.5) {
       if (block.isFalling || visualY < targetY) {
-        velocityY += 1800.0 * dt;
+        if (velocityY <= 0) {
+          velocityY = 2.8 * game.cellSize;
+        }
+        velocityY += 42.0 * game.cellSize * dt;
         visualY += velocityY * dt;
 
         if (visualY >= targetY) {
           visualY = targetY;
           velocityY = 0.0;
 
-          // Squash & Stretch impact bounce
-          squishY = 0.82;
-          squishX = 1.15;
+          // Juicy Squash & Stretch landing bounce
+          squishY = 0.80;
+          squishX = 1.18;
 
           game.emitLandingWaterDrops(
             visualX + width / 2,
@@ -160,8 +180,8 @@ class FishBlockComponent extends PositionComponent
     }
 
     // 3. Spring back Squash & Stretch to (1.0, 1.0)
-    const springK = 350.0;
-    const springC = 22.0;
+    const springK = 340.0;
+    const springC = 21.0;
 
     final forceX = -springK * (squishX - 1.0) - springC * squishVelX;
     squishVelX += forceX * dt;
@@ -171,11 +191,38 @@ class FishBlockComponent extends PositionComponent
     squishVelY += forceY * dt;
     squishY += squishVelY * dt;
 
-    // 4. Line Clearing Effect
+    // 4. Staggered Left-to-Right Elastic Pop-Jump & Bubble Dissolve on Row Clear
     if (block.isClearing) {
-      clearScale = min(1.3, clearScale + 1.2 * dt);
-      clearAlpha = max(0.0, clearAlpha - 3.5 * dt);
-      flashAlpha = min(1.0, flashAlpha + 5.0 * dt);
+      if (priority < 45) priority = 45;
+      _clearElapsed += dt;
+
+      // Left-to-right wave stagger across columns 0..7
+      final staggerDelay = block.col * 0.022;
+      if (_clearElapsed > staggerDelay) {
+        final activeTime = _clearElapsed - staggerDelay;
+        const popDuration = 0.25;
+        final t = (activeTime / popDuration).clamp(0.0, 1.0);
+
+        if (t < 0.38) {
+          // Phase 1: Joyful elastic swell & upward leap (sprite remains 100% crisp & colorful)
+          final p1 = t / 0.38;
+          final ease = sin(p1 * pi * 0.5);
+          clearScale = 1.0 + 0.22 * ease;
+          clearOffsetY = -8.5 * ease;
+          clearTilt = sin(p1 * pi) * 0.10;
+          clearAuraAlpha = ease * 0.65;
+          clearAlpha = 1.0;
+        } else {
+          // Phase 2: Smooth shrink-pop to zero as bubbles & stars burst outward
+          final p2 = ((t - 0.38) / 0.62).clamp(0.0, 1.0);
+          final shrink = 1.0 - p2 * p2;
+          clearScale = 1.22 * shrink;
+          clearOffsetY = -8.5 - 5.0 * p2;
+          clearTilt = -sin(p2 * pi) * 0.12;
+          clearAuraAlpha = 0.65 * (1.0 - p2);
+          clearAlpha = shrink.clamp(0.0, 1.0);
+        }
+      }
     }
 
     position.setValues(visualX, visualY);
@@ -184,18 +231,19 @@ class FishBlockComponent extends PositionComponent
   @override
   void render(Canvas canvas) {
     super.render(canvas);
+    if (clearAlpha <= 0.01 || clearScale <= 0.02) return;
 
     final w = width;
     final h = height;
 
     canvas.save();
 
-    // Center transform for squash, stretch, and tilt
-    canvas.translate(w / 2, h / 2);
-    canvas.rotate(dragTilt);
+    // Center transform for squash, stretch, clear hop, and tilt
+    canvas.translate(w / 2, h / 2 + clearOffsetY);
+    canvas.rotate(dragTilt + clearTilt);
 
     // Swimming breathing idle
-    final swimWobbleY = isDragging ? 0.0 : sin(idleTimer) * 1.2;
+    final swimWobbleY = (isDragging || block.isClearing) ? 0.0 : sin(idleTimer) * 1.2;
     canvas.translate(0, swimWobbleY);
 
     final currentScaleX = squishX * clearScale * (isDragging ? 1.04 : 1.0);
@@ -204,11 +252,11 @@ class FishBlockComponent extends PositionComponent
 
     canvas.translate(-w / 2, -h / 2);
 
-    final opacity = (isPreview || block.row < 0 ? 0.80 : 1.0) * clearAlpha;
+    final opacity = ((isPreview || block.row < 0 ? 0.80 : 1.0) * clearAlpha).clamp(0.0, 1.0);
 
     // 1. Drop Shadow under fish
     _shadowPaint
-      ..color = Colors.black.withOpacity(0.20 * opacity)
+      ..color = Colors.black.withOpacity(0.18 * opacity)
       ..maskFilter = MaskFilter.blur(BlurStyle.normal, isDragging ? 6.0 : 3.0);
     canvas.drawRRect(
       RRect.fromRectAndRadius(
@@ -218,7 +266,7 @@ class FishBlockComponent extends PositionComponent
       _shadowPaint,
     );
 
-    // 2. Drag Highlight Glow
+    // 2. Drag Highlight Glow or Soft Clear Halo Behind Fish (never obscuring sprite)
     if (isDragging) {
       canvas.drawRRect(
         RRect.fromRectAndRadius(
@@ -226,6 +274,17 @@ class FishBlockComponent extends PositionComponent
           const Radius.circular(10),
         ),
         _dragGlowPaint,
+      );
+    } else if (clearAuraAlpha > 0.01) {
+      final auraColor =
+          game.controller.combo > 1 ? const Color(0xFFFFD54F) : const Color(0xFF00E5FF);
+      _clearAuraPaint.color = auraColor.withOpacity((clearAuraAlpha * clearAlpha).clamp(0.0, 0.7));
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTWH(-2, -2, w + 4, h + 4),
+          const Radius.circular(12),
+        ),
+        _clearAuraPaint,
       );
     }
 
@@ -265,15 +324,6 @@ class FishBlockComponent extends PositionComponent
     // 5. Bomb Countdown Badge
     if (block.type == BlockType.bomb) {
       _renderBombBadge(canvas, w, h, opacity);
-    }
-
-    // 6. Flash White on Clear
-    if (flashAlpha > 0.0) {
-      _flashPaint.color = Colors.white.withOpacity(flashAlpha.clamp(0.0, 0.8));
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(srcDstRect, const Radius.circular(8)),
-        _flashPaint,
-      );
     }
 
     canvas.restore();
@@ -375,7 +425,7 @@ class FishBlockComponent extends PositionComponent
     if (!isDragging) return;
     isDragging = false;
     dragOffset = 0.0;
-    priority = 0;
+    priority = isPreview ? 15 : 20;
 
     game.ghostIndicator.hide();
 

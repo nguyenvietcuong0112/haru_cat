@@ -51,12 +51,12 @@ class _LevelSelectScreenState extends State<LevelSelectScreen>
     return Scaffold(
       body: Stack(
         children: [
-          // Background
+          // Synchronized Underwater Background
           Positioned.fill(
             child: Image.asset(
-              'assets/images/backgrounds/bg_ingame.png',
+              'assets/images/backgrounds/bg_home.png',
               fit: BoxFit.cover,
-              errorBuilder: (ctx, err, stack) => Container(color: const Color(0xFFF3E5D8)),
+              errorBuilder: (ctx, err, stack) => Container(color: const Color(0xFFC8F3FE)),
             ),
           ),
 
@@ -73,7 +73,7 @@ class _LevelSelectScreenState extends State<LevelSelectScreen>
                         child: Container(
                           padding: const EdgeInsets.all(8),
                           decoration: const BoxDecoration(
-                            color: Color(0xFF5D4037),
+                            color: Color(0xFF006064),
                             shape: BoxShape.circle,
                           ),
                           child: const Icon(Icons.arrow_back_rounded, color: Colors.white, size: 24),
@@ -86,7 +86,7 @@ class _LevelSelectScreenState extends State<LevelSelectScreen>
                           style: TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.w900,
-                            color: Color(0xFF5D4037),
+                            color: Color(0xFF004D5A),
                             letterSpacing: 1.2,
                           ),
                         ),
@@ -100,18 +100,19 @@ class _LevelSelectScreenState extends State<LevelSelectScreen>
                 Container(
                   margin: const EdgeInsets.symmetric(horizontal: 24),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFD7CCC8),
+                    color: Colors.white.withOpacity(0.85),
                     borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: const Color(0xFF6DC4D8), width: 1.5),
                   ),
                   child: TabBar(
                     controller: _tabController,
                     indicator: BoxDecoration(
-                      color: const Color(0xFFFF9800),
+                      color: const Color(0xFF00ACC1),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     indicatorSize: TabBarIndicatorSize.tab,
                     labelColor: Colors.white,
-                    unselectedLabelColor: const Color(0xFF5D4037),
+                    unselectedLabelColor: const Color(0xFF006064),
                     labelStyle: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14),
                     tabs: const [
                       Tab(text: 'DỄ (30)'),

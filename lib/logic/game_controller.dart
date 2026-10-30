@@ -13,11 +13,25 @@ class ClearedBlockInfo {
   final int col;
   final int width;
   final int points;
+  final BlockType blockType;
 
   ClearedBlockInfo({
     required this.col,
     required this.width,
     required this.points,
+    this.blockType = BlockType.cat1,
+  });
+}
+
+class BrokenObstacleInfo {
+  final int col;
+  final int width;
+  final bool wasIce;
+
+  const BrokenObstacleInfo({
+    required this.col,
+    required this.width,
+    required this.wasIce,
   });
 }
 
@@ -27,6 +41,7 @@ class RowClearEvent {
   final int combo;
   final int timestamp;
   final List<ClearedBlockInfo> blocks;
+  final List<BrokenObstacleInfo> brokenObstacles;
 
   RowClearEvent({
     required this.rowIndex,
@@ -34,6 +49,7 @@ class RowClearEvent {
     required this.combo,
     required this.timestamp,
     required this.blocks,
+    this.brokenObstacles = const [],
   });
 }
 
@@ -430,11 +446,11 @@ class GameController extends ChangeNotifier {
 
       notifyListeners();
 
-      // Allow user to clearly see block slide smoothly into target position before gravity or line evaluation
-      await Future.delayed(const Duration(milliseconds: 220));
+      // Crisp horizontal snap beat before gravity begins
+      await Future.delayed(const Duration(milliseconds: 90));
 
-      // Run gravity & match loop
-      await _resolvePhysicsAndLines();
+      // Run step-by-step gravity & top-to-bottom sequential line clear loop
+      await _resolvePhysicsAndLines(resetCombo: true);
 
       if (!_isGameOver && !_isLevelCompleted && !_isContinuePrompting) {
         if (mode == GameMode.endless) {
@@ -442,9 +458,9 @@ class GameController extends ChangeNotifier {
             _frozenTurns--;
             _mascotQuote = 'Magician frost hold! Row push paused!';
           } else {
-            await Future.delayed(const Duration(milliseconds: 220));
+            await Future.delayed(const Duration(milliseconds: 160));
             await _pushNewRow();
-            await _resolvePhysicsAndLines();
+            await _resolvePhysicsAndLines(resetCombo: false);
           }
 
           // Auto-detect deadlock / no valid moves and push prepared row up
@@ -454,76 +470,43 @@ class GameController extends ChangeNotifier {
         _checkLevelWinOrLoss();
       }
     } finally {
+      _combo = 0;
       _isBusy = false;
       notifyListeners();
     }
   }
 
-  Future<bool> _resolvePhysicsAndLines() async {
+  Future<bool> _resolvePhysicsAndLines({bool resetCombo = true}) async {
     bool anyClearedTotal = false;
     bool hadAction = true;
-    _combo = 0;
+    if (resetCombo) {
+      _combo = 0;
+    }
+
+    // Tracks rows where 100% of blocks were Ice/Sealed and just unsealed in this step,
+    // preventing an all-ice row from double-clearing without any new blocks falling.
+    final unsealedOnlyRows = <int>{};
 
     while (hadAction) {
       hadAction = false;
 
-      // 1. Gravity fall
-      bool hadFall = await _applyGravity();
+      // 1. Gravity fall: blocks drift smoothly down to rest on rows below
+      final hadFall = await _applyGravity();
       if (hadFall) {
         hadAction = true;
-        await Future.delayed(const Duration(milliseconds: 140));
+        unsealedOnlyRows.clear();
       }
 
-      // 2. Clear full lines
-      int linesCleared = await _checkAndClearLines();
-      if (linesCleared > 0) {
+      // 2. Clear ONLY the single topmost full horizontal row (strictly top-to-bottom).
+      // After clearing 1 row, loop immediately returns to step 1 (_applyGravity) so upper
+      // blocks gradually drift down row-by-row before evaluating the next full row!
+      final clearedOneRow = await _checkAndClearTopmostLine(
+        hadJustFallen: hadFall,
+        unsealedOnlyRows: unsealedOnlyRows,
+      );
+      if (clearedOneRow) {
         hadAction = true;
         anyClearedTotal = true;
-        _combo++;
-        _linesClearedTotal += linesCleared;
-        if (_combo > _maxCombo) _maxCombo = _combo;
-
-        // Score formula per GDD: Cleared Cells x Combo (Level Multiplier is omitted per design)
-        final clearedCells = linesCleared * GameConstants.boardCols;
-        final points = clearedCells * _combo;
-        _score += points;
-
-        // Silver Fish: base 2 per line * silverMultiplier
-        final silverReward = (linesCleared * 2 * silverMultiplier).round();
-        _silverEarned += silverReward;
-        _playerData.addSilverFish(silverReward);
-
-        // Charge skill meter
-        _skillCharge = min(1.0, _skillCharge + (linesCleared * 0.2) + (_combo * 0.08));
-
-        // Update Level Progression (every 8 lines cleared = 1 level)
-        final newLevel = 1 + (_linesClearedTotal ~/ 8);
-        if (newLevel > _inGameLevel) {
-          _inGameLevel = newLevel;
-          _mascotQuote = 'CẤP ĐỘ MỚI! Cấp $_inGameLevel (Bạc x${silverMultiplier.toStringAsFixed(1)})!';
-        } else if (_combo >= 3) {
-          _mascotQuote = 'TUYỆT VỜI! Combo x$_combo!';
-        } else if (_combo == 2) {
-          _mascotQuote = 'Combo Đôi!';
-        } else {
-          _mascotQuote = 'Xóa hàng thành công! Cố lên!';
-        }
-
-        if (_score > _bestScore) {
-          _bestScore = _score;
-          try {
-            final prefs = await SharedPreferences.getInstance();
-            await prefs.setInt('best_score', _bestScore);
-          } catch (_) {}
-        }
-
-        if (_combo > 1) {
-          _audio.playMeowCombo();
-        } else {
-          _audio.playMeow();
-        }
-
-        await Future.delayed(const Duration(milliseconds: 200));
       }
     }
 
@@ -538,6 +521,7 @@ class GameController extends ChangeNotifier {
 
   Future<bool> _applyGravity() async {
     bool fellAny = false;
+    int maxDropRows = 0;
     final sortedBlocks = List<CatBlock>.from(_blocks)..sort((a, b) => a.row.compareTo(b.row));
     final fallingBlocks = <CatBlock>[];
 
@@ -559,6 +543,10 @@ class GameController extends ChangeNotifier {
       }
 
       if (targetRow != block.row) {
+        final dropDistance = block.row - targetRow;
+        if (dropDistance > maxDropRows) {
+          maxDropRows = dropDistance;
+        }
         block.row = targetRow;
         block.isFalling = true;
         fallingBlocks.add(block);
@@ -569,23 +557,35 @@ class GameController extends ChangeNotifier {
     if (fellAny) {
       _audio.playDrop();
       notifyListeners();
-      // Allow smooth aquatic falling animation curve (280ms) to complete
-      await Future.delayed(const Duration(milliseconds: 280));
+
+      // Exact physics landing time synced with FishBlockComponent (v0 = 2.8*cell, g = 42*cell)
+      final exactFallSec = (-2.8 + sqrt(7.84 + 84.0 * maxDropRows)) / 42.0;
+      final fallMs = (exactFallSec * 1000).ceil() + 35;
+      await Future.delayed(Duration(milliseconds: fallMs));
+
       for (final b in fallingBlocks) {
         b.isFalling = false;
       }
       notifyListeners();
-      await Future.delayed(const Duration(milliseconds: 60));
+
+      // Settle pause so player clearly sees blocks land, bounce, and fill the row before clearing
+      await Future.delayed(const Duration(milliseconds: 150));
     }
 
     return fellAny;
   }
 
-  Future<int> _checkAndClearLines() async {
-    final fullRows = <int>[];
+  /// Scans strictly TOP-TO-BOTTOM and clears at most ONE full horizontal row per call,
+  /// allowing gravity to gradually drift upper rows down one step at a time.
+  Future<bool> _checkAndClearTopmostLine({
+    required bool hadJustFallen,
+    required Set<int> unsealedOnlyRows,
+  }) async {
+    int? targetRow;
 
-    // Only complete horizontal rows (all 8 columns filled) are eligible for clearance
-    for (int r = 0; r < GameConstants.boardRows; r++) {
+    // Strictly TOP-TO-BOTTOM scan: highest full row clears first
+    for (int r = GameConstants.boardRows - 1; r >= 0; r--) {
+      if (unsealedOnlyRows.contains(r)) continue;
       bool full = true;
       for (int c = 0; c < GameConstants.boardCols; c++) {
         if (isCellEmpty(c, r)) {
@@ -594,127 +594,175 @@ class GameController extends ChangeNotifier {
         }
       }
       if (full) {
-        fullRows.add(r);
+        targetRow = r;
+        break;
       }
     }
 
-    if (fullRows.isEmpty) return 0;
+    if (targetRow == null) return false;
 
-    // Pause briefly so user clearly sees the fish filling the entire horizontal row(s) edge-to-edge
-    await Future.delayed(const Duration(milliseconds: 200));
+    // Brief visual confirmation beat so player sees the completed horizontal row edge-to-edge
+    await Future.delayed(Duration(milliseconds: hadJustFallen ? 40 : 110));
 
-    // Clear full rows sequentially (bottom to top) with row-by-row delay and beam animation
-    fullRows.sort();
+    final r = targetRow;
+    _combo++;
+    _linesClearedTotal += 1;
+    if (_combo > _maxCombo) _maxCombo = _combo;
 
-    for (int i = 0; i < fullRows.length; i++) {
-      final r = fullRows[i];
-      _clearingRowIndex = r;
-      _audio.playClear();
+    // Score formula per GDD: Cleared Cells x Combo
+    final rowPoints = GameConstants.boardCols * _combo;
+    _score += rowPoints;
 
-      final currentCombo = max(1, _combo + (i > 0 ? 1 : 0));
-      final rowPoints = GameConstants.boardCols * currentCombo;
-      final rowBlocksToRemove = <CatBlock>{};
-      final rowSpecialTriggers = <CatBlock>[];
-      final clearedBlockInfos = <ClearedBlockInfo>[];
+    // Silver Fish: base 2 per line * silverMultiplier
+    final silverReward = (2 * silverMultiplier).round();
+    _silverEarned += silverReward;
+    _playerData.addSilverFish(silverReward);
 
-      for (final b in _blocks) {
-        if (b.row == r) {
-          if (b.type == BlockType.sealed) {
-            b.type = BlockType.cat1;
-            _audio.playIceBreak();
-            _mascotQuote = 'Rong biển đã gỡ! Cá tự do rồi meow!';
-          } else if (b.type == BlockType.ice) {
-            // Clear lần 1: Phá băng! Khối băng vỡ ra thành cá thường
-            b.type = BlockType.cat1;
-            b.health = 1;
-            _audio.playIceBreak();
-            _mascotQuote = 'Lớp băng đã vỡ! Cá thoát khỏi băng rồi!';
-          } else {
-            // Clear lần 2 (hoặc cá thường): Ăn con cá!
-            b.isClearing = true;
+    // Charge skill meter
+    _skillCharge = min(1.0, _skillCharge + 0.2 + (_combo * 0.08));
+
+    // Update Level Progression (every 8 lines cleared = 1 level)
+    final newLevel = 1 + (_linesClearedTotal ~/ 8);
+    if (newLevel > _inGameLevel) {
+      _inGameLevel = newLevel;
+      _mascotQuote = 'CẤP ĐỘ MỚI! Cấp $_inGameLevel (Bạc x${silverMultiplier.toStringAsFixed(1)})!';
+    } else if (_combo >= 3) {
+      _mascotQuote = 'TUYỆT VỜI! Combo x$_combo!';
+    } else if (_combo == 2) {
+      _mascotQuote = 'Combo Đôi!';
+    } else {
+      _mascotQuote = 'Xóa hàng thành công! Cố lên!';
+    }
+
+    if (_score > _bestScore) {
+      _bestScore = _score;
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setInt('best_score', _bestScore);
+      } catch (_) {}
+    }
+
+    _clearingRowIndex = r;
+    _audio.playClear();
+    if (_combo > 1) {
+      _audio.playMeowCombo();
+    } else {
+      _audio.playMeow();
+    }
+
+    final rowBlocksToRemove = <CatBlock>{};
+    final rowSpecialTriggers = <CatBlock>[];
+    final clearedBlockInfos = <ClearedBlockInfo>[];
+    final brokenObstacles = <BrokenObstacleInfo>[];
+
+    for (final b in _blocks) {
+      if (b.row == r) {
+        if (b.type == BlockType.sealed) {
+          b.type = BlockType.cat1;
+          brokenObstacles.add(BrokenObstacleInfo(col: b.col, width: b.width, wasIce: false));
+          _audio.playIceBreak();
+          _mascotQuote = 'Rong biển đã gỡ! Cá tự do rồi meow!';
+        } else if (b.type == BlockType.ice) {
+          // Clear lần 1: Phá băng! Khối băng vỡ ra thành cá thường
+          b.type = BlockType.cat1;
+          b.health = 1;
+          brokenObstacles.add(BrokenObstacleInfo(col: b.col, width: b.width, wasIce: true));
+          _audio.playIceBreak();
+          _mascotQuote = 'Lớp băng đã vỡ! Cá thoát khỏi băng rồi!';
+        } else {
+          // Clear lần 2 (hoặc cá thường): Ăn con cá!
+          b.isClearing = true;
+          rowBlocksToRemove.add(b);
+          clearedBlockInfos.add(ClearedBlockInfo(
+            col: b.col,
+            width: b.width,
+            points: b.width * _combo,
+            blockType: b.type,
+          ));
+
+          if (b.type != BlockType.cat1 && b.type != BlockType.cat2 && b.type != BlockType.cat3) {
+            _specialBlocksCleared++;
+          }
+
+          if (b.type == BlockType.gift) {
+            final roll = _random.nextInt(3);
+            if (roll == 0) {
+              final goldDrop = 1 + _random.nextInt(2); // 1 or 2 Gold
+              _playerData.addGoldFish(goldDrop);
+              _mascotQuote = 'Rương kho báu: +$goldDrop Vàng!';
+            } else if (roll == 1) {
+              final boosterTypes = ['hammer', 'wand', 'magnet'];
+              final chosen = boosterTypes[_random.nextInt(boosterTypes.length)];
+              _playerData.addBooster(chosen, 1);
+              final bName = chosen == 'hammer' ? 'Búa' : (chosen == 'wand' ? 'Đũa thần' : 'Nam châm');
+              _mascotQuote = 'Rương kho báu: +1 Đạo cụ $bName!';
+            } else {
+              const silverDrop = 25;
+              _silverEarned += silverDrop;
+              _playerData.addSilverFish(silverDrop);
+              _mascotQuote = 'Rương kho báu: +$silverDrop Bạc!';
+            }
+            _audio.playBooster();
+          } else if (b.type == BlockType.bomb || b.type == BlockType.lightning) {
+            rowSpecialTriggers.add(b);
+          }
+        }
+      }
+    }
+
+    // Sort left-to-right for staggered aquatic wave pop choreography
+    clearedBlockInfos.sort((a, b) => a.col.compareTo(b.col));
+
+    _latestClearEvent = RowClearEvent(
+      rowIndex: r,
+      points: rowPoints,
+      combo: _combo,
+      timestamp: DateTime.now().microsecondsSinceEpoch,
+      blocks: clearedBlockInfos,
+      brokenObstacles: brokenObstacles,
+    );
+
+    notifyListeners();
+
+    // Allow full staggered wave sweep & elastic pop-dissolve animation in Flame to finish cleanly
+    await Future.delayed(const Duration(milliseconds: 420));
+
+    // Handle special block chain reactions for this row
+    for (final sb in rowSpecialTriggers) {
+      if (sb.type == BlockType.bomb) {
+        _audio.playClear();
+        for (final b in _blocks) {
+          if ((b.row - sb.row).abs() <= 1 &&
+              (b.col <= sb.col + sb.width && b.col + b.width >= sb.col)) {
             rowBlocksToRemove.add(b);
-            clearedBlockInfos.add(ClearedBlockInfo(
-              col: b.col,
-              width: b.width,
-              points: b.width * currentCombo,
-            ));
-
-            if (b.type != BlockType.cat1 && b.type != BlockType.cat2 && b.type != BlockType.cat3) {
-              _specialBlocksCleared++;
-            }
-
-            if (b.type == BlockType.gift) {
-              final roll = _random.nextInt(3);
-              if (roll == 0) {
-                final goldDrop = 1 + _random.nextInt(2); // 1 or 2 Gold
-                _playerData.addGoldFish(goldDrop);
-                _mascotQuote = 'Rương kho báu: +$goldDrop Vàng!';
-              } else if (roll == 1) {
-                final boosterTypes = ['hammer', 'wand', 'magnet'];
-                final chosen = boosterTypes[_random.nextInt(boosterTypes.length)];
-                _playerData.addBooster(chosen, 1);
-                final bName = chosen == 'hammer' ? 'Búa' : (chosen == 'wand' ? 'Đũa thần' : 'Nam châm');
-                _mascotQuote = 'Rương kho báu: +1 Đạo cụ $bName!';
-              } else {
-                const silverDrop = 25;
-                _silverEarned += silverDrop;
-                _playerData.addSilverFish(silverDrop);
-                _mascotQuote = 'Rương kho báu: +$silverDrop Bạc!';
-              }
-              _audio.playBooster();
-            } else if (b.type == BlockType.bomb || b.type == BlockType.lightning) {
-              rowSpecialTriggers.add(b);
-            }
           }
         }
-      }
-
-      _latestClearEvent = RowClearEvent(
-        rowIndex: r,
-        points: rowPoints,
-        combo: currentCombo,
-        timestamp: DateTime.now().microsecondsSinceEpoch,
-        blocks: clearedBlockInfos,
-      );
-
-      notifyListeners();
-      // Shimmer & scale-pop animation delay for current row
-      await Future.delayed(const Duration(milliseconds: 280));
-
-      // Handle special block chain reactions for this row
-      for (final sb in rowSpecialTriggers) {
-        if (sb.type == BlockType.bomb) {
-          _audio.playClear();
-          for (final b in _blocks) {
-            if ((b.row - sb.row).abs() <= 1 &&
-                (b.col <= sb.col + sb.width && b.col + b.width >= sb.col)) {
-              rowBlocksToRemove.add(b);
-            }
-          }
-        } else if (sb.type == BlockType.lightning) {
-          _audio.playLightning();
-          // Cross zap: clears entire row and intersecting columns
-          for (final b in _blocks) {
-            final isSameRow = b.row == sb.row;
-            final isSameCol = (b.col <= sb.col + sb.width - 1 && b.col + b.width > sb.col);
-            if (isSameRow || isSameCol) {
-              rowBlocksToRemove.add(b);
-            }
+      } else if (sb.type == BlockType.lightning) {
+        _audio.playLightning();
+        // Cross zap: clears entire row and intersecting columns
+        for (final b in _blocks) {
+          final isSameRow = b.row == sb.row;
+          final isSameCol = (b.col <= sb.col + sb.width - 1 && b.col + b.width > sb.col);
+          if (isSameRow || isSameCol) {
+            rowBlocksToRemove.add(b);
           }
         }
-      }
-
-      _blocks.removeWhere((b) => rowBlocksToRemove.contains(b));
-      _clearingRowIndex = null;
-      notifyListeners();
-
-      // If multiple full rows, pause before next row animation to let user see sequential cascade
-      if (i < fullRows.length - 1) {
-        await Future.delayed(const Duration(milliseconds: 140));
       }
     }
 
-    return fullRows.length;
+    if (rowBlocksToRemove.isEmpty) {
+      unsealedOnlyRows.add(r);
+    } else {
+      _blocks.removeWhere((b) => rowBlocksToRemove.contains(b));
+    }
+
+    _clearingRowIndex = null;
+    notifyListeners();
+
+    // Breathing pause before upper rows begin drifting down into the cleared gap
+    await Future.delayed(const Duration(milliseconds: 120));
+
+    return true;
   }
 
   Future<void> _pushNewRow() async {
@@ -884,6 +932,7 @@ class GameController extends ChangeNotifier {
     notifyListeners();
     await Future.delayed(const Duration(milliseconds: 200));
     await _resolvePhysicsAndLines();
+    _combo = 0;
     notifyListeners();
   }
 
@@ -931,13 +980,13 @@ class GameController extends ChangeNotifier {
 
           notifyListeners();
           await Future.delayed(const Duration(milliseconds: 160));
-          await _applyGravity();
           await _resolvePhysicsAndLines();
 
           if (mode == GameMode.endless) {
             await _ensureBoardHasValidMoves();
           }
         } finally {
+          _combo = 0;
           _isBusy = false;
           notifyListeners();
         }
@@ -955,13 +1004,13 @@ class GameController extends ChangeNotifier {
 
           notifyListeners();
           await Future.delayed(const Duration(milliseconds: 160));
-          await _applyGravity();
           await _resolvePhysicsAndLines();
 
           if (mode == GameMode.endless) {
             await _ensureBoardHasValidMoves();
           }
         } finally {
+          _combo = 0;
           _isBusy = false;
           notifyListeners();
         }
@@ -996,13 +1045,13 @@ class GameController extends ChangeNotifier {
           notifyListeners();
 
           await Future.delayed(const Duration(milliseconds: 160));
-          await _applyGravity();
           await _resolvePhysicsAndLines();
 
           if (mode == GameMode.endless) {
             await _ensureBoardHasValidMoves();
           }
         } finally {
+          _combo = 0;
           _isBusy = false;
           notifyListeners();
         }
@@ -1056,13 +1105,13 @@ class GameController extends ChangeNotifier {
         notifyListeners();
         await Future.delayed(const Duration(milliseconds: 200));
 
-        await _applyGravity();
         await _resolvePhysicsAndLines();
 
         if (mode == GameMode.endless) {
           await _ensureBoardHasValidMoves();
         }
       } finally {
+        _combo = 0;
         _isBusy = false;
         notifyListeners();
       }
