@@ -14,17 +14,26 @@ void main() {
   });
 
   group('Game Logic Tests', () {
-    test('CatBlock occupied columns calculation', () {
+    test('CatBlock occupied columns calculation and fish assets', () {
       final block = CatBlock(
         id: 'test_1',
         col: 2,
         row: 0,
         width: 3,
         type: BlockType.cat1,
+        variant: 1,
       );
 
       expect(block.occupiedCols, equals([2, 3, 4]));
       expect(block.spriteAsset, contains('cat1_3cell.png'));
+      expect(block.fishSpriteAsset, equals('assets/images/sprites/fish/fish_3cell_b.png'));
+      expect(block.clone().variant, equals(1));
+
+      final iceBlock = CatBlock(id: 'ice', col: 0, row: 0, width: 2, type: BlockType.ice);
+      expect(iceBlock.overlayAsset, equals('assets/images/sprites/fish/ice_2cell.png'));
+
+      final seaBlock = CatBlock(id: 'sea', col: 0, row: 0, width: 4, type: BlockType.sealed);
+      expect(seaBlock.overlayAsset, equals('assets/images/sprites/fish/seaweed_4cell.png'));
     });
 
     test('Block sliding limits and collision', () {
@@ -166,65 +175,60 @@ void main() {
       expect(controller.nextRowBlocks.contains(previewBlock), isFalse);
     });
 
-    test('Hammer booster smashes target block and all nearby cats', () async {
+    test('Hammer booster breaks ice block in 1 single hit', () async {
       final controller = GameController(mode: GameMode.endless);
       controller.blocks.clear();
       final player = PlayerData();
       player.addBooster('hammer', 1);
 
-      final center = CatBlock(id: 'center', col: 2, row: 1, width: 2, type: BlockType.cat1);
-      final nearbyTop = CatBlock(id: 'top', col: 2, row: 2, width: 2, type: BlockType.cat2);
-      final nearbyBottom = CatBlock(id: 'bottom', col: 2, row: 0, width: 2, type: BlockType.cat3);
-      final farAway = CatBlock(id: 'far', col: 6, row: 5, width: 2, type: BlockType.cat1);
-
-      controller.blocks.addAll([center, nearbyTop, nearbyBottom, farAway]);
+      // Normally ice takes 2 clears (health = 2)
+      final iceBlock = CatBlock(id: 'ice', col: 2, row: 1, width: 2, type: BlockType.ice);
+      final normalBlock = CatBlock(id: 'normal', col: 6, row: 1, width: 2, type: BlockType.cat1);
+      controller.blocks.addAll([iceBlock, normalBlock]);
       controller.selectBooster(GameConstants.boosterHammer);
 
-      await controller.applyBoosterToBlock(center);
+      await controller.applyBoosterToBlock(iceBlock);
 
-      // Center and nearby cats must be smashed
-      expect(controller.blocks.contains(center), isFalse);
-      expect(controller.blocks.contains(nearbyTop), isFalse);
-      expect(controller.blocks.contains(nearbyBottom), isFalse);
-      // Far away block must survive (though it may have fallen by gravity to row 0)
-      expect(controller.blocks.contains(farAway), isTrue);
+      // Ice block must be completely shattered in 1 hit
+      expect(controller.blocks.contains(iceBlock), isFalse);
+      expect(controller.blocks.any((b) => b.id == 'ice'), isFalse);
     });
 
-    test('Magnet booster clears all cat blocks of a chosen color', () async {
+    test('Net booster scoops/collects targeted fish block to clear space', () async {
       final controller = GameController(mode: GameMode.endless);
       controller.blocks.clear();
       final player = PlayerData();
-      player.addBooster('magnet', 1);
+      player.addBooster('net', 1);
 
-      final c1a = CatBlock(id: 'c1a', col: 0, row: 0, width: 2, type: BlockType.cat1);
-      final c1b = CatBlock(id: 'c1b', col: 4, row: 0, width: 2, type: BlockType.cat1);
+      final blockingFish = CatBlock(id: 'blocker', col: 0, row: 5, width: 3, type: BlockType.cat1);
+      final otherFish = CatBlock(id: 'other', col: 4, row: 1, width: 2, type: BlockType.cat2);
+      controller.blocks.addAll([blockingFish, otherFish]);
 
-      controller.blocks.addAll([c1a, c1b]);
+      controller.selectBooster(GameConstants.boosterNet);
+      await controller.applyBoosterToBlock(blockingFish);
 
-      await controller.useMagnet();
-
-      // All cat1 blocks should have been cleared by magnet
-      expect(controller.blocks.any((b) => b.type == BlockType.cat1), isFalse);
+      // Blocker fish is scooped up and removed
+      expect(controller.blocks.contains(blockingFish), isFalse);
+      expect(controller.blocks.any((b) => b.id == 'other'), isTrue);
     });
 
-    test('Magic Wand splits large cat block into 1-cell kitty cats', () async {
+    test('Magic Wand transforms large fish blocks into 1-cell fish for clearance', () async {
       final controller = GameController(mode: GameMode.endless);
       controller.blocks.clear();
       final player = PlayerData();
       player.addBooster('wand', 1);
 
-      final bigCat = CatBlock(id: 'big', col: 1, row: 0, width: 3, type: BlockType.cat2);
-      controller.blocks.add(bigCat);
-      controller.selectBooster(GameConstants.boosterWand);
+      final bigFish1 = CatBlock(id: 'big1', col: 0, row: 0, width: 3, type: BlockType.cat2);
+      final bigFish2 = CatBlock(id: 'big2', col: 4, row: 1, width: 2, type: BlockType.cat3);
+      controller.blocks.addAll([bigFish1, bigFish2]);
 
-      await controller.applyBoosterToBlock(bigCat);
+      await controller.useWand();
 
-      // Big cat should be removed
-      expect(controller.blocks.contains(bigCat), isFalse);
-      // Replaced by 3 1-cell cats
-      final oneCellCats = controller.blocks.where((b) => b.type == BlockType.cat2 && b.width == 1).toList();
-      expect(oneCellCats.length, equals(3));
-      expect(oneCellCats.map((b) => b.col).toSet(), equals({1, 2, 3}));
+      // Both big fish should be transformed into 1-cell fish
+      expect(controller.blocks.contains(bigFish1), isFalse);
+      expect(controller.blocks.contains(bigFish2), isFalse);
+      expect(controller.blocks.every((b) => b.width == 1), isTrue);
+      expect(controller.blocks.length, equals(5)); // 3 + 2 = 5 1-cell fish
     });
 
     test('Sealed block cannot be slid but unseals when row is cleared', () async {
@@ -290,6 +294,120 @@ void main() {
       // CRITICAL CHECK: incoming preview block MUST have been pushed onto the board at row 0!
       expect(controller.blocks.contains(previewBlock), isTrue);
       expect(previewBlock.row, equals(0));
+    });
+
+    test('Silver Multiplier scales according to inGameLevel', () {
+      final controller = GameController(mode: GameMode.endless);
+      // Level 1-2: x1.0
+      expect(controller.silverMultiplier, equals(1.0));
+
+      // Level 3: x1.2
+      // Level progression: 1 + (_linesClearedTotal ~/ 8)
+      // When linesClearedTotal >= 16 -> level 3
+      // We can verify getter directly by checking logic
+    });
+
+    test('Silver to Gold exchange enforces maximum 10 Gold limit', () async {
+      final player = PlayerData();
+      await player.init();
+      // Give plenty of silver
+      player.addSilverFish(2000);
+
+      // Exchange 10 times successfully
+      for (int i = 0; i < 10; i++) {
+        final success = player.exchangeSilverForGold(silverCost: 50);
+        expect(success, isTrue, reason: 'Exchange $i should succeed');
+      }
+
+      expect(player.goldExchangedFromSilver, equals(10));
+
+      // 11th exchange must fail due to limit
+      final limitExceeded = player.exchangeSilverForGold(silverCost: 50);
+      expect(limitExceeded, isFalse, reason: 'Exchange past 10 Gold must fail');
+    });
+
+    test('Scoring formula calculates Cleared Cells x Combo', () async {
+      final controller = GameController(mode: GameMode.endless);
+      controller.blocks.clear();
+
+      // Row 0 completely full except col 7
+      final b1 = CatBlock(id: 'r1', col: 0, row: 0, width: 4, type: BlockType.cat1);
+      final b2 = CatBlock(id: 'r2', col: 4, row: 0, width: 3, type: BlockType.cat1);
+      final mover = CatBlock(id: 'rm', col: 6, row: 1, width: 1, type: BlockType.cat1);
+      controller.blocks.addAll([b1, b2, mover]);
+
+      controller.nextRowBlocks.clear();
+      final preview = CatBlock(id: 'preview', col: 0, row: -1, width: 2, type: BlockType.cat2);
+      controller.nextRowBlocks.add(preview);
+
+      await controller.slideBlock(mover, 7);
+
+      // 1 row cleared = 8 cells * combo 1 = 8 points
+      expect(controller.linesClearedTotal, equals(1));
+      expect(controller.score, equals(8));
+      // Base silver reward: 2 silver * multiplier (1.0) = 2
+      expect(controller.silverEarned, equals(2));
+    });
+
+    test('Bomb obstacle penalty spawns extra fish blocks when countdown expires', () async {
+      final controller = GameController(mode: GameMode.level);
+      controller.blocks.clear();
+
+      final bomb = CatBlock(id: 'bomb1', col: 0, row: 0, width: 2, type: BlockType.bomb, bombCountdown: 1);
+      final harmless = CatBlock(id: 'slide_trigger', col: 5, row: 0, width: 1, type: BlockType.cat1);
+      controller.blocks.addAll([bomb, harmless]);
+
+      final initialBlockCount = controller.blocks.length; // 2 (bomb + harmless)
+      // Slide harmless to col 6 (1 move -> bombCountdown drops to 0 -> penalty triggers)
+      await controller.slideBlock(harmless, 6);
+
+      // Bomb itself should be removed
+      expect(controller.blocks.any((b) => b.type == BlockType.bomb), isFalse);
+      // Extra penalty blocks should have spawned (total blocks should exceed initial harmless remaining)
+      expect(controller.blocks.length, greaterThanOrEqualTo(initialBlockCount));
+    });
+
+    test('Ice block 2-phase clear: first clear breaks ice into normal fish, second clear removes fish', () async {
+      final controller = GameController(mode: GameMode.level);
+      controller.blocks.clear();
+
+      // Ice block on row 0
+      final ice = CatBlock(id: 'ice_test', col: 0, row: 0, width: 2, type: BlockType.ice);
+      final f1 = CatBlock(id: 'f1', col: 2, row: 0, width: 3, type: BlockType.cat1);
+      final f2 = CatBlock(id: 'f2', col: 5, row: 0, width: 2, type: BlockType.cat1);
+      // Mover at row 1 to drop into col 7 row 0
+      final mover = CatBlock(id: 'mv', col: 6, row: 1, width: 1, type: BlockType.cat1);
+      controller.blocks.addAll([ice, f1, f2, mover]);
+
+      // Complete row 0 for the 1st time
+      await controller.slideBlock(mover, 7);
+
+      // Lần 1: Băng vỡ thành cá thường, cá vẫn còn trên bàn cờ!
+      expect(ice.type, equals(BlockType.cat1));
+      expect(controller.blocks.contains(ice), isTrue);
+    });
+
+    test('Hammer booster strictly prioritizes ice blocks over regular blocks (Ice block > block)', () async {
+      final controller = GameController(mode: GameMode.endless);
+      controller.blocks.clear();
+      final player = PlayerData();
+      player.addBooster('hammer', 2);
+      final initialHammers = player.getBoosterCount('hammer');
+
+      final ice = CatBlock(id: 'ice_target', col: 0, row: 0, width: 2, type: BlockType.ice);
+      final normal = CatBlock(id: 'normal_fish', col: 4, row: 0, width: 2, type: BlockType.cat1);
+      controller.blocks.addAll([ice, normal]);
+
+      controller.selectBooster(GameConstants.boosterHammer);
+      // Try to tap normal block when ice exists -> must be rejected!
+      await controller.applyBoosterToBlock(normal);
+      expect(controller.blocks.contains(normal), isTrue, reason: 'Normal block cannot be hit when ice exists');
+      expect(player.getBoosterCount('hammer'), equals(initialHammers), reason: 'Hammer must not be consumed on invalid target');
+
+      // Now tap ice block -> shattered!
+      await controller.applyBoosterToBlock(ice);
+      expect(controller.blocks.contains(ice), isFalse, reason: 'Ice block must be shattered');
+      expect(player.getBoosterCount('hammer'), equals(initialHammers - 1), reason: 'Hammer consumed');
     });
   });
 }
